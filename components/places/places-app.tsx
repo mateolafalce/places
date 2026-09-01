@@ -13,7 +13,14 @@ import {
   X,
 } from 'lucide-react';
 import NextImage from 'next/image';
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 
 import { FloorPlan } from '@/components/places/floor-plan';
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +72,11 @@ const WEB_MCP_LABELS: Record<WebMcpStatus, string> = {
 };
 
 export function PlacesApp() {
-  const [state, dispatch] = useReducer(appReducer, undefined, createInitialState);
+  const [state, dispatch] = useReducer(
+    appReducer,
+    undefined,
+    createInitialState,
+  );
   const stateRef = useRef(state);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [webMcpStatus, setWebMcpStatus] = useState<WebMcpStatus>('registering');
@@ -76,51 +87,72 @@ export function PlacesApp() {
     stateRef.current = state;
   }, [state]);
 
-  const runCommand = useCallback((command: RoomCommand, actor: EventActor): CommandResult => {
-    const outcome = executeCommand(stateRef.current, command, actor);
-    stateRef.current = outcome.state;
-    dispatch({ type: 'replace', state: outcome.state });
-    setNotice(outcome.result);
-    return outcome.result;
-  }, []);
+  const runCommand = useCallback(
+    (command: RoomCommand, actor: EventActor): CommandResult => {
+      const outcome = executeCommand(stateRef.current, command, actor);
+      stateRef.current = outcome.state;
+      dispatch({ type: 'replace', state: outcome.state });
+      setNotice(outcome.result);
+      return outcome.result;
+    },
+    [],
+  );
 
   const getCurrentState = useCallback(() => stateRef.current, []);
 
-  useEffect(() =>
-    registerStableTools({
-      getState: getCurrentState,
-      runCommand,
-      setStatus: setWebMcpStatus,
-    }), [getCurrentState, runCommand]);
+  useEffect(
+    () =>
+      registerStableTools({
+        getState: getCurrentState,
+        runCommand,
+        setStatus: setWebMcpStatus,
+      }),
+    [getCurrentState, runCommand],
+  );
 
   const contextKey = `${state.selection?.type ?? 'none'}:${state.selection?.id ?? ''}:${
-    state.selection?.type === 'guest' && state.pinnedGuestIds.includes(state.selection.id)
+    state.selection?.type === 'guest' &&
+    state.pinnedGuestIds.includes(state.selection.id)
       ? 'pinned'
       : 'free'
   }:${violations.length > 0 ? 'violations' : 'clear'}`;
 
-  useEffect(() =>
-    registerContextTools({
-      getState: getCurrentState,
-      runCommand,
-      setStatus: setWebMcpStatus,
-    }), [contextKey, getCurrentState, runCommand]);
+  useEffect(
+    () =>
+      registerContextTools({
+        getState: getCurrentState,
+        runCommand,
+        setStatus: setWebMcpStatus,
+      }),
+    [contextKey, getCurrentState, runCommand],
+  );
 
   const setSelection = (selection: Selection) => {
     const same =
-      state.selection?.type === selection?.type && state.selection?.id === selection?.id;
+      state.selection?.type === selection?.type &&
+      state.selection?.id === selection?.id;
     dispatch({ type: 'select', selection: same ? null : selection });
   };
 
   const togglePin = (guestId: string) => {
     const pinned = stateRef.current.pinnedGuestIds.includes(guestId);
-    runCommand({ type: pinned ? 'unpin_guest' : 'pin_guest', guestId }, 'human');
+    runCommand(
+      { type: pinned ? 'unpin_guest' : 'pin_guest', guestId },
+      'human',
+    );
   };
 
   const exportJson = () => {
     const payload = JSON.stringify(getRoomSnapshot(stateRef.current), null, 2);
-    downloadBlob(new Blob([payload], { type: 'application/json' }), 'orchard-house-seating.json');
-    setNotice({ ok: true, code: 'json_exported', message: 'The room was exported as JSON.' });
+    downloadBlob(
+      new Blob([payload], { type: 'application/json' }),
+      'orchard-house-seating.json',
+    );
+    setNotice({
+      ok: true,
+      code: 'json_exported',
+      message: 'The room was exported as JSON.',
+    });
   };
 
   const exportPng = async () => {
@@ -129,10 +161,11 @@ export function PlacesApp() {
     const clone = source.cloneNode(true) as SVGSVGElement;
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     clone.setAttribute('width', '1200');
-    clone.setAttribute('height', '979');
+    clone.setAttribute('height', '960');
     clone.querySelectorAll('image').forEach((image) => {
       const href = image.getAttribute('href');
-      if (href?.startsWith('/')) image.setAttribute('href', `${window.location.origin}${href}`);
+      if (href?.startsWith('/'))
+        image.setAttribute('href', `${window.location.origin}${href}`);
     });
     const css = [...document.styleSheets]
       .flatMap((sheet) => {
@@ -143,19 +176,24 @@ export function PlacesApp() {
         }
       })
       .join('\n');
-    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    const style = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'style',
+    );
     style.textContent = css;
     clone.insertBefore(style as unknown as Node, clone.firstChild);
     const markup = new XMLSerializer().serializeToString(clone);
-    const imageUrl = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml' }));
+    const imageUrl = URL.createObjectURL(
+      new Blob([markup], { type: 'image/svg+xml' }),
+    );
     const image = new Image();
     image.onload = () => {
       const canvas = document.createElement('canvas');
       canvas.width = 1200;
-      canvas.height = 979;
+      canvas.height = 960;
       const context = canvas.getContext('2d');
       if (!context) return;
-      context.fillStyle = '#f3ebdc';
+      context.fillStyle = '#1b0d06';
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       canvas.toBlob((blob) => {
@@ -165,31 +203,49 @@ export function PlacesApp() {
     };
     image.onerror = () => {
       URL.revokeObjectURL(imageUrl);
-      setNotice({ ok: false, code: 'png_export_failed', message: 'The PNG export could not be created.' });
+      setNotice({
+        ok: false,
+        code: 'png_export_failed',
+        message: 'The PNG export could not be created.',
+      });
     };
     image.src = imageUrl;
   };
 
   const addGuest = () => {
-    const name = window.prompt('What is the guest’s name?', `Late Guest ${stateRef.current.nextGuestNumber}`);
+    const name = window.prompt(
+      'What is the guest’s name?',
+      `Late Guest ${stateRef.current.nextGuestNumber}`,
+    );
     if (name === null) return;
     runCommand({ type: 'add_guest', name }, 'human');
   };
 
   const resetSeed = () => {
-    if (window.confirm('Reset every seat, pin, and timeline event to the Orchard House seed?')) {
+    if (
+      window.confirm(
+        'Reset every seat, pin, and timeline event to the Orchard House seed?',
+      )
+    ) {
       runCommand({ type: 'reset_seed' }, 'human');
     }
   };
 
   const selectedGuest =
     state.selection?.type === 'guest' ? state.guests[state.selection.id] : null;
-  const selectedGuestSeat = selectedGuest ? getGuestSeat(state, selectedGuest.id) : null;
+  const selectedGuestSeat = selectedGuest
+    ? getGuestSeat(state, selectedGuest.id)
+    : null;
   const selectedTable =
     state.selection?.type === 'table' ? state.tables[state.selection.id] : null;
   const totalEmptySeats = TABLE_IDS.reduce((count, tableId) => {
     const table = state.tables[tableId];
-    return count + state.seats[tableId].slice(0, table.capacity).filter((seat) => seat === null).length;
+    return (
+      count +
+      state.seats[tableId]
+        .slice(0, table.capacity)
+        .filter((seat) => seat === null).length
+    );
   }, 0);
 
   return (
@@ -238,7 +294,11 @@ export function PlacesApp() {
           <div className="room-heading">
             <div>
               <p className="eyebrow">Saturday dinner</p>
-              <h2>{violations.length === 0 ? 'The room is in balance.' : 'The room needs a hand.'}</h2>
+              <h2>
+                {violations.length === 0
+                  ? 'The room is in balance.'
+                  : 'The room needs a hand.'}
+              </h2>
             </div>
             <p className="instruction">
               <Pin size={13} /> Select or drag a guest. Press P to pin.
@@ -249,8 +309,12 @@ export function PlacesApp() {
               state={state}
               violations={violations}
               svgRef={svgRef}
-              onSelectGuest={(guestId) => setSelection({ type: 'guest', id: guestId })}
-              onSelectTable={(tableId) => setSelection({ type: 'table', id: tableId })}
+              onSelectGuest={(guestId) =>
+                setSelection({ type: 'guest', id: guestId })
+              }
+              onSelectTable={(tableId) =>
+                setSelection({ type: 'table', id: tableId })
+              }
               onMoveGuest={(guestId, tableId) =>
                 runCommand({ type: 'move_guest', guestId, tableId }, 'human')
               }
@@ -263,14 +327,21 @@ export function PlacesApp() {
               aria-live="polite"
             >
               {notice.message}
-              <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss message">
+              <button
+                type="button"
+                onClick={() => setNotice(null)}
+                aria-label="Dismiss message"
+              >
                 <X size={13} />
               </button>
             </output>
           )}
         </section>
 
-        <aside className="timeline-card" aria-label="Room controls and activity timeline">
+        <aside
+          className="timeline-card"
+          aria-label="Room controls and activity timeline"
+        >
           <div className="timeline-heading">
             <div>
               <p className="eyebrow">Shared history</p>
@@ -297,7 +368,9 @@ export function PlacesApp() {
               />
             ) : (
               <div className="selection-empty">
-                <span className="selection-icon"><Pin size={16} /></span>
+                <span className="selection-icon">
+                  <Pin size={16} />
+                </span>
                 <div>
                   <strong>Select a guest or table</strong>
                   <p>The agent’s available tools follow your selection.</p>
@@ -309,11 +382,16 @@ export function PlacesApp() {
           {violations.length > 0 && (
             <section className="violations-panel" aria-label="Open violations">
               <div className="violations-title">
-                <strong>{violations.length} open {violations.length === 1 ? 'violation' : 'violations'}</strong>
+                <strong>
+                  {violations.length} open{' '}
+                  {violations.length === 1 ? 'violation' : 'violations'}
+                </strong>
                 <Button
                   size="xs"
                   variant="destructive"
-                  onClick={() => runCommand({ type: 'fix_violations' }, 'human')}
+                  onClick={() =>
+                    runCommand({ type: 'fix_violations' }, 'human')
+                  }
                 >
                   <WandSparkles /> Fix
                 </Button>
@@ -326,7 +404,10 @@ export function PlacesApp() {
 
           <ol className="timeline-list">
             {state.timeline.slice(0, 5).map((event) => (
-              <li key={event.id} className={`timeline-item ${event.actor}-event`}>
+              <li
+                key={event.id}
+                className={`timeline-item ${event.actor}-event`}
+              >
                 <span className="event-dot" />
                 <div>
                   <strong>{event.message}</strong>
@@ -335,11 +416,19 @@ export function PlacesApp() {
               </li>
             ))}
           </ol>
-          <div className={`status-card ${violations.length > 0 ? 'has-violations' : ''}`}>
+          <div
+            className={`status-card ${violations.length > 0 ? 'has-violations' : ''}`}
+          >
             <span className="status-zero">{violations.length}</span>
             <div>
-              <strong>{violations.length === 1 ? 'violation' : 'violations'}</strong>
-              <p>{state.pinnedGuestIds.length} {state.pinnedGuestIds.length === 1 ? 'pin' : 'pins'} · {totalEmptySeats} empty seats</p>
+              <strong>
+                {violations.length === 1 ? 'violation' : 'violations'}
+              </strong>
+              <p>
+                {state.pinnedGuestIds.length}{' '}
+                {state.pinnedGuestIds.length === 1 ? 'pin' : 'pins'} ·{' '}
+                {totalEmptySeats} empty seats
+              </p>
             </div>
           </div>
           <blockquote>“One state. Two hands.”</blockquote>
@@ -371,7 +460,9 @@ function GuestControls({
       <div className="selection-title">
         <div className="selection-person">
           {guest.generated ? (
-            <span className="portrait-placeholder">{guest.name.slice(0, 2).toUpperCase()}</span>
+            <span className="portrait-placeholder">
+              {guest.name.slice(0, 2).toUpperCase()}
+            </span>
           ) : (
             <NextImage
               src={`/cast/${guest.id}-front.png`}
@@ -386,17 +477,23 @@ function GuestControls({
             <p>{guest.note}</p>
           </div>
         </div>
-        <button type="button" onClick={onClose} aria-label="Clear selection"><X size={14} /></button>
+        <button type="button" onClick={onClose} aria-label="Clear selection">
+          <X size={14} />
+        </button>
       </div>
       <div className="tag-row">
-        {guest.tags.map((tag) => <span key={tag}>{tag.replace('_', ' ')}</span>)}
+        {guest.tags.map((tag) => (
+          <span key={tag}>{tag.replace('_', ' ')}</span>
+        ))}
         {pinned && <span className="pin-tag">pinned</span>}
       </div>
       <Button
         variant={pinned ? 'outline' : 'default'}
         size="sm"
         className="pin-action"
-        onClick={() => onCommand({ type: pinned ? 'unpin_guest' : 'pin_guest', guestId })}
+        onClick={() =>
+          onCommand({ type: pinned ? 'unpin_guest' : 'pin_guest', guestId })
+        }
       >
         {pinned ? <PinOff /> : <Pin />}
         {pinned ? 'Unpin guest' : 'Pin this seat'}
@@ -427,17 +524,29 @@ interface TableControlsProps {
   onClose: () => void;
 }
 
-function TableControls({ state, tableId, onCommand, onClose }: TableControlsProps) {
+function TableControls({
+  state,
+  tableId,
+  onCommand,
+  onClose,
+}: TableControlsProps) {
   const table = state.tables[tableId];
-  const seated = state.seats[tableId].slice(0, table.capacity).filter(Boolean).length;
+  const seated = state.seats[tableId]
+    .slice(0, table.capacity)
+    .filter(Boolean).length;
   return (
     <>
       <div className="selection-title">
         <div>
           <strong>{table.label}</strong>
-          <p>{seated} seated · {table.zones.length > 0 ? table.zones.join(' · ') : 'center room'}</p>
+          <p>
+            {seated} seated ·{' '}
+            {table.zones.length > 0 ? table.zones.join(' · ') : 'center room'}
+          </p>
         </div>
-        <button type="button" onClick={onClose} aria-label="Clear selection"><X size={14} /></button>
+        <button type="button" onClick={onClose} aria-label="Clear selection">
+          <X size={14} />
+        </button>
       </div>
       <div className="stepper-row">
         <span>Capacity</span>
@@ -446,15 +555,31 @@ function TableControls({ state, tableId, onCommand, onClose }: TableControlsProp
             size="icon-xs"
             variant="outline"
             disabled={table.capacity <= 2}
-            onClick={() => onCommand({ type: 'set_capacity', tableId, capacity: table.capacity - 1 })}
-          ><Minus /></Button>
+            onClick={() =>
+              onCommand({
+                type: 'set_capacity',
+                tableId,
+                capacity: table.capacity - 1,
+              })
+            }
+          >
+            <Minus />
+          </Button>
           <strong>{table.capacity}</strong>
           <Button
             size="icon-xs"
             variant="outline"
             disabled={table.capacity >= 6}
-            onClick={() => onCommand({ type: 'set_capacity', tableId, capacity: table.capacity + 1 })}
-          ><Plus /></Button>
+            onClick={() =>
+              onCommand({
+                type: 'set_capacity',
+                tableId,
+                capacity: table.capacity + 1,
+              })
+            }
+          >
+            <Plus />
+          </Button>
         </div>
       </div>
       <div className="stepper-row">
@@ -464,15 +589,31 @@ function TableControls({ state, tableId, onCommand, onClose }: TableControlsProp
             size="icon-xs"
             variant="outline"
             disabled={table.reservedEmptySeats <= 0}
-            onClick={() => onCommand({ type: 'leave_empty_seats', tableId, count: table.reservedEmptySeats - 1 })}
-          ><Minus /></Button>
+            onClick={() =>
+              onCommand({
+                type: 'leave_empty_seats',
+                tableId,
+                count: table.reservedEmptySeats - 1,
+              })
+            }
+          >
+            <Minus />
+          </Button>
           <strong>{table.reservedEmptySeats}</strong>
           <Button
             size="icon-xs"
             variant="outline"
             disabled={table.reservedEmptySeats >= table.capacity}
-            onClick={() => onCommand({ type: 'leave_empty_seats', tableId, count: table.reservedEmptySeats + 1 })}
-          ><Plus /></Button>
+            onClick={() =>
+              onCommand({
+                type: 'leave_empty_seats',
+                tableId,
+                count: table.reservedEmptySeats + 1,
+              })
+            }
+          >
+            <Plus />
+          </Button>
         </div>
       </div>
     </>
