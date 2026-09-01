@@ -37,7 +37,10 @@ and an 80-column target; run formatting before review. Use two-space
 indentation, `PascalCase` for components and types, `camelCase` for functions
 and variables, and kebab-case filenames such as `floor-plan.tsx`. Prefer the
 `@/` import alias and compose existing `components/ui` primitives rather than
-duplicating controls. Keep domain logic pure and separate from rendering.
+duplicating controls. `components/ui/` is trimmed to the primitives the app
+actually renders; pull in a new one on demand with `npx shadcn add <name>`
+instead of restoring the full template. Keep domain logic pure and separate
+from rendering.
 
 ## Testing Guidelines
 
