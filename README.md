@@ -132,7 +132,8 @@ npm run format:check
 
 `npm run build` produces the Cloudflare-compatible worker; `npm start` serves it with Wrangler.
 Pull requests run tests, type checking, linting, and formatting checks in GitHub
-Actions.
+Actions. Dependabot checks the npm application weekly and GitHub Actions
+monthly.
 
 Python helpers (cast / floor-plan assets) run through the repo `.venv` only: `.venv/bin/python scripts/orchard_cast.py`.
 
