@@ -1,6 +1,7 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" rx="8" fill="#F4EFE4"/>
-  <circle cx="16" cy="16" r="11" stroke="#8C2F39" stroke-width="1.5"/>
-  <path d="M18.4 8.5c2.4.7 4.3 2.6 5 5l-4.1 1.1-3-3 2.1-3.1Z" fill="#C9A227" stroke="#8C2F39" stroke-width="1"/>
-  <path d="m17.2 13.1-6.7 6.7M10.5 19.8l-1 3.7 3.7-1" stroke="#8C2F39" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<svg width="32" height="32" viewBox="0 0 16 16" fill="none" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+  <rect width="16" height="16" fill="#2a170c"/>
+  <path d="M0 0h16v1H0zM0 15h16v1H0zM0 0h1v16H0zM15 0h1v16h-1z" fill="#7a4f26"/>
+  <path d="M1 1h14v1H1z" fill="#b07c38"/>
+  <path d="M6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM9 3h1v1h-1zM5 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM5 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM5 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM5 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM7 9h1v1h-1zM8 9h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM7 11h1v1h-1zM8 11h1v1h-1zM8 12h1v1h-1z" fill="#e2a83e"/>
+  <path d="M6 4h1v1h-1zM7 4h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1z" fill="#ffe6a2"/>
 </svg>

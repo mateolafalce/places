@@ -86,7 +86,9 @@ async function registerTools(
   try {
     await Promise.all(
       tools.map((tool) =>
-        document.modelContext!.registerTool(tool, { signal: controller.signal }),
+        document.modelContext!.registerTool(tool, {
+          signal: controller.signal,
+        }),
       ),
     );
     if (!controller.signal.aborted) setStatus('ready');
@@ -135,9 +137,20 @@ export function registerStableTools(bridge: WebMcpBridge): () => void {
       },
       execute: (input) => {
         const guestId = text(input.guestId);
-        if (!guestId) return { ok: false, code: 'invalid_guest_id', message: 'guestId is required.' };
+        if (!guestId)
+          return {
+            ok: false,
+            code: 'invalid_guest_id',
+            message: 'guestId is required.',
+          };
         const explanation = explainGuest(bridge.getState(), guestId);
-        return explanation ?? { ok: false, code: 'guest_not_found', message: `Guest "${guestId}" was not found.` };
+        return (
+          explanation ?? {
+            ok: false,
+            code: 'guest_not_found',
+            message: `Guest "${guestId}" was not found.`,
+          }
+        );
       },
     },
     {
@@ -148,10 +161,16 @@ export function registerStableTools(bridge: WebMcpBridge): () => void {
       inputSchema: {
         type: 'object',
         properties: {
-          name: { type: 'string', description: 'The guest name. A placeholder is used when omitted.' },
+          name: {
+            type: 'string',
+            description: 'The guest name. A placeholder is used when omitted.',
+          },
           tags: {
             type: 'array',
-            items: { type: 'string', enum: ['adult', 'grandparent', 'kid', 'wheelchair', 'plus_one'] },
+            items: {
+              type: 'string',
+              enum: ['adult', 'grandparent', 'kid', 'wheelchair', 'plus_one'],
+            },
             description: 'Optional guest tags.',
           },
         },
@@ -160,7 +179,13 @@ export function registerStableTools(bridge: WebMcpBridge): () => void {
       execute: (input) => {
         const tags = Array.isArray(input.tags)
           ? input.tags.filter((tag): tag is GuestTag =>
-              ['adult', 'grandparent', 'kid', 'wheelchair', 'plus_one'].includes(String(tag)),
+              [
+                'adult',
+                'grandparent',
+                'kid',
+                'wheelchair',
+                'plus_one',
+              ].includes(String(tag)),
             )
           : undefined;
         const result = bridge.runCommand(
@@ -191,13 +216,23 @@ export function registerContextTools(bridge: WebMcpBridge): () => void {
         description: `Move an unpinned guest to the currently selected ${selectedTable.label}.`,
         inputSchema: {
           type: 'object',
-          properties: { guestId: { type: 'string', description: 'A guest identifier from get_room_state.' } },
+          properties: {
+            guestId: {
+              type: 'string',
+              description: 'A guest identifier from get_room_state.',
+            },
+          },
           required: ['guestId'],
           additionalProperties: false,
         },
         execute: (input) => {
           const guestId = text(input.guestId);
-          if (!guestId) return { ok: false, code: 'invalid_guest_id', message: 'guestId is required.' };
+          if (!guestId)
+            return {
+              ok: false,
+              code: 'invalid_guest_id',
+              message: 'guestId is required.',
+            };
           const result = bridge.runCommand(
             { type: 'seat_guest_here', guestId, tableId: selectedTableId },
             'agent',
@@ -217,7 +252,12 @@ export function registerContextTools(bridge: WebMcpBridge): () => void {
         },
         execute: (input) => {
           const capacity = integer(input.capacity);
-          if (capacity === null) return { ok: false, code: 'invalid_capacity', message: 'capacity must be an integer.' };
+          if (capacity === null)
+            return {
+              ok: false,
+              code: 'invalid_capacity',
+              message: 'capacity must be an integer.',
+            };
           const result = bridge.runCommand(
             { type: 'set_capacity', tableId: selectedTableId, capacity },
             'agent',
@@ -237,7 +277,12 @@ export function registerContextTools(bridge: WebMcpBridge): () => void {
         },
         execute: (input) => {
           const count = integer(input.count);
-          if (count === null) return { ok: false, code: 'invalid_empty_seat_count', message: 'count must be an integer.' };
+          if (count === null)
+            return {
+              ok: false,
+              code: 'invalid_empty_seat_count',
+              message: 'count must be an integer.',
+            };
           const result = bridge.runCommand(
             { type: 'leave_empty_seats', tableId: selectedTableId, count },
             'agent',
@@ -261,7 +306,10 @@ export function registerContextTools(bridge: WebMcpBridge): () => void {
       inputSchema: EMPTY_SCHEMA,
       execute: () => {
         const result = bridge.runCommand(
-          { type: pinned ? 'unpin_guest' : 'pin_guest', guestId: selectedGuestId },
+          {
+            type: pinned ? 'unpin_guest' : 'pin_guest',
+            guestId: selectedGuestId,
+          },
           'agent',
         );
         return toolResponse(result, bridge.getState());
@@ -282,9 +330,18 @@ export function registerContextTools(bridge: WebMcpBridge): () => void {
           },
           execute: (input) => {
             const destination = tableId(input.tableId);
-            if (!destination) return { ok: false, code: 'invalid_table_id', message: 'tableId is invalid.' };
+            if (!destination)
+              return {
+                ok: false,
+                code: 'invalid_table_id',
+                message: 'tableId is invalid.',
+              };
             const result = bridge.runCommand(
-              { type: 'move_guest', guestId: selectedGuestId, tableId: destination },
+              {
+                type: 'move_guest',
+                guestId: selectedGuestId,
+                tableId: destination,
+              },
               'agent',
             );
             return toolResponse(result, bridge.getState());
@@ -296,13 +353,23 @@ export function registerContextTools(bridge: WebMcpBridge): () => void {
           description: `Swap the currently selected ${selectedGuest.name} with another unpinned guest.`,
           inputSchema: {
             type: 'object',
-            properties: { otherGuestId: { type: 'string', description: 'The other guest identifier.' } },
+            properties: {
+              otherGuestId: {
+                type: 'string',
+                description: 'The other guest identifier.',
+              },
+            },
             required: ['otherGuestId'],
             additionalProperties: false,
           },
           execute: (input) => {
             const otherGuestId = text(input.otherGuestId);
-            if (!otherGuestId) return { ok: false, code: 'invalid_guest_id', message: 'otherGuestId is required.' };
+            if (!otherGuestId)
+              return {
+                ok: false,
+                code: 'invalid_guest_id',
+                message: 'otherGuestId is required.',
+              };
             const result = bridge.runCommand(
               { type: 'swap_guests', guestId: selectedGuestId, otherGuestId },
               'agent',

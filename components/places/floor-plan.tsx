@@ -3,6 +3,7 @@
 /* oxlint-disable jsx-a11y/prefer-tag-over-role -- SVG groups are the interactive floorplan controls. */
 
 import {
+  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -26,12 +27,139 @@ const SEAT_OFFSETS = [
   { x: -72, y: -43, labelPlacement: 'above' },
 ] as const;
 
+/* A 9x9 wheelchair sprite. The old marker was the ♿ character, which the
+ * system font drew smooth and full-colour in the middle of pixel art. */
+const ACCESSIBLE_SPRITE =
+  'M3 0h1v1h-1zM4 0h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM2 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM7 6h1v1h-1zM1 7h1v1h-1zM7 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1z';
+
 const TABLE_LAYOUT: Record<TableId, { x: number; y: number }> = {
   'table-1': { x: 264, y: 191 },
   'table-2': { x: 490, y: 191 },
-  'table-3': { x: 264, y: 409 },
-  'table-4': { x: 490, y: 409 },
+  'table-3': { x: 264, y: 465 },
+  'table-4': { x: 490, y: 465 },
 };
+
+/* Guests glance over their shoulder now and then: one turns their back for a
+ * beat, then faces the table again. Each guest keeps their own timer, so the
+ * room never turns in unison. */
+const TURN_DELAY_MIN_MS = 0;
+const TURN_DELAY_MAX_MS = 120_000;
+const TURN_DURATION_MS = 1_000;
+
+const NO_TURNED_GUESTS: ReadonlySet<string> = new Set();
+
+type Facing = 'front' | 'back';
+
+function castSprite(guestId: string, facing: Facing): string {
+  return `/cast/${guestId}-${facing}.png`;
+}
+
+/* The set of guests currently showing their back. Guests without cast art are
+ * not passed in: they are drawn as initials and have nothing to turn. */
+function useTurnedGuests(guestIds: string[]): ReadonlySet<string> {
+  const [turned, setTurned] = useState(NO_TURNED_GUESTS);
+  /* The roster matters only as a value, and sorted: a fresh array every render
+   * -- or a reseated guest -- would otherwise restart everybody's timer. */
+  const roster = [...guestIds].sort().join(' ');
+
+  useEffect(() => {
+    const ids = roster.split(' ').filter(Boolean);
+    if (ids.length === 0) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    /* The back sprite must be in cache before the turn, or the guest blinks
+     * out of the room for as long as that first fetch takes. */
+    for (const guestId of ids) {
+      const preload = new Image();
+      preload.src = castSprite(guestId, 'back');
+    }
+
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const after = (delay: number, run: () => void) => {
+      const timer = setTimeout(() => {
+        timers.delete(timer);
+        run();
+      }, delay);
+      timers.add(timer);
+    };
+    const setFacing = (guestId: string, facingBack: boolean) =>
+      setTurned((current) => {
+        const next = new Set(current);
+        if (facingBack) next.add(guestId);
+        else next.delete(guestId);
+        return next;
+      });
+    const scheduleTurn = (guestId: string) => {
+      const delay =
+        TURN_DELAY_MIN_MS +
+        Math.random() * (TURN_DELAY_MAX_MS - TURN_DELAY_MIN_MS);
+      after(delay, () => {
+        setFacing(guestId, true);
+        after(TURN_DURATION_MS, () => {
+          setFacing(guestId, false);
+          scheduleTurn(guestId);
+        });
+      });
+    };
+
+    for (const guestId of ids) scheduleTurn(guestId);
+    return () => {
+      for (const timer of timers) clearTimeout(timer);
+      setTurned(NO_TURNED_GUESTS);
+    };
+  }, [roster]);
+
+  return turned;
+}
+
+/* Pointer travel that separates a click from a drag, and how close to a table
+ * centre the pointer must be for that table to accept the drop. */
+const DRAG_THRESHOLD = 8;
+const DROP_RADIUS = 120;
+
+/* The live drag: where the pointer is in floorplan coordinates, and the table
+ * that would receive the guest if it were released now. */
+interface DragState {
+  guestId: string;
+  x: number;
+  y: number;
+  tableId: TableId | null;
+  blocked: boolean;
+  moved: boolean;
+}
+
+interface GuestSpriteProps {
+  guest: RoomState['guests'][string];
+  guestId: string;
+  x: number;
+  y: number;
+  facing: Facing;
+}
+
+/* Shared by the seated guest and by the ghost that follows the cursor. */
+function GuestSprite({ guest, guestId, x, y, facing }: GuestSpriteProps) {
+  if (guest.generated) {
+    return (
+      <g className="generated-avatar guest-sprite">
+        <rect x={x - 16} y={y - 16} width="32" height="32" />
+        <text x={x} y={y + 4} textAnchor="middle">
+          {initials(guest.name)}
+        </text>
+      </g>
+    );
+  }
+  return (
+    <image
+      href={castSprite(guestId, facing)}
+      className="guest-sprite"
+      x={x - 18}
+      y={y - 32}
+      width="36"
+      height="64"
+      imageRendering="pixelated"
+    />
+  );
+}
 
 interface FloorPlanProps {
   state: RoomState;
@@ -60,12 +188,16 @@ export function FloorPlan({
   onMoveGuest,
   onTogglePin,
 }: FloorPlanProps) {
-  const dragStart = useRef<{
+  const dragOrigin = useRef<{
     guestId: string;
+    pointerId: number;
     clientX: number;
     clientY: number;
   } | null>(null);
-  const [draggingGuestId, setDraggingGuestId] = useState<string | null>(null);
+  /* A drop ends with a click event on whatever sits under the pointer. That
+   * click must not re-select or reselect anything behind the guest. */
+  const suppressClick = useRef(false);
+  const [drag, setDrag] = useState<DragState | null>(null);
   const selectedGuestId =
     state.selection?.type === 'guest' ? state.selection.id : null;
   const selectedTableId =
@@ -76,79 +208,166 @@ export function FloorPlan({
   const violationTableIds = new Set(
     violations.flatMap((violation) => violation.tableIds),
   );
+  const turnedGuestIds = useTurnedGuests(
+    TABLE_IDS.flatMap((tableId) =>
+      state.seats[tableId].filter(
+        (guestId): guestId is string =>
+          guestId !== null && !state.guests[guestId]?.generated,
+      ),
+    ),
+  );
+  const facingOf = (guestId: string): Facing =>
+    turnedGuestIds.has(guestId) ? 'back' : 'front';
+
+  const toLocalPoint = (clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    const matrix = svg?.getScreenCTM();
+    if (!svg || !matrix) return null;
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    return point.matrixTransform(matrix.inverse());
+  };
+
+  /* The nearest table within reach, ignoring the one the guest already sits
+   * at: releasing over its own table is a cancelled drag, not a move. */
+  const dropTargetFor = (guestId: string, local: { x: number; y: number }) => {
+    const nearest = TABLE_IDS.map((tableId) => ({
+      tableId,
+      distance: Math.hypot(
+        local.x - TABLE_LAYOUT[tableId].x,
+        local.y - TABLE_LAYOUT[tableId].y,
+      ),
+    })).sort((a, b) => a.distance - b.distance)[0];
+    if (!nearest || nearest.distance > DROP_RADIUS) return null;
+    if (getGuestSeat(state, guestId)?.tableId === nearest.tableId) return null;
+    return nearest.tableId;
+  };
+
+  /* Previews the outcome while the pointer is still down. The drop is still
+   * dispatched when blocked, so the room explains why it was refused. */
+  const isDropBlocked = (guestId: string, tableId: TableId) => {
+    if (state.pinnedGuestIds.includes(guestId)) return true;
+    const table = state.tables[tableId];
+    return !state.seats[tableId].some(
+      (occupant, index) => index < table.capacity && occupant === null,
+    );
+  };
+
+  const cancelDrag = () => {
+    const origin = dragOrigin.current;
+    dragOrigin.current = null;
+    setDrag(null);
+    const svg = svgRef.current;
+    if (origin && svg?.hasPointerCapture(origin.pointerId))
+      svg.releasePointerCapture(origin.pointerId);
+  };
+
+  const updateDrag = (event: ReactPointerEvent<SVGSVGElement>) => {
+    const origin = dragOrigin.current;
+    if (!origin) return;
+    const local = toLocalPoint(event.clientX, event.clientY);
+    if (!local) return;
+    const moved =
+      Math.hypot(
+        event.clientX - origin.clientX,
+        event.clientY - origin.clientY,
+      ) >= DRAG_THRESHOLD;
+    const tableId = moved ? dropTargetFor(origin.guestId, local) : null;
+    setDrag({
+      guestId: origin.guestId,
+      x: local.x,
+      y: local.y,
+      tableId,
+      blocked: tableId !== null && isDropBlocked(origin.guestId, tableId),
+      moved,
+    });
+  };
 
   const finishDrag = (event: ReactPointerEvent<SVGSVGElement>) => {
-    const started = dragStart.current;
-    dragStart.current = null;
-    setDraggingGuestId(null);
-    if (!started) return;
+    const origin = dragOrigin.current;
+    cancelDrag();
+    if (!origin) return;
 
     const distance = Math.hypot(
-      event.clientX - started.clientX,
-      event.clientY - started.clientY,
+      event.clientX - origin.clientX,
+      event.clientY - origin.clientY,
     );
-    if (distance < 8) {
-      onSelectGuest(started.guestId);
+    if (distance < DRAG_THRESHOLD) {
+      onSelectGuest(origin.guestId);
       return;
     }
 
-    const svg = svgRef.current;
-    if (!svg) return;
-    const point = svg.createSVGPoint();
-    point.x = event.clientX;
-    point.y = event.clientY;
-    const matrix = svg.getScreenCTM();
-    if (!matrix) return;
-    const local = point.matrixTransform(matrix.inverse());
-    const target = TABLE_IDS.map((tableId) => {
-      const table = TABLE_LAYOUT[tableId];
-      return {
-        tableId,
-        distance: Math.hypot(local.x - table.x, local.y - table.y),
-      };
-    }).sort((a, b) => a.distance - b.distance)[0];
-    if (target && target.distance < 120)
-      onMoveGuest(started.guestId, target.tableId);
+    suppressClick.current = true;
+    const local = toLocalPoint(event.clientX, event.clientY);
+    const tableId = local ? dropTargetFor(origin.guestId, local) : null;
+    if (tableId) onMoveGuest(origin.guestId, tableId);
   };
+
+  /* Escape returns the guest to its seat, the way every drag surface does. */
+  const isDragging = drag !== null;
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      const origin = dragOrigin.current;
+      dragOrigin.current = null;
+      setDrag(null);
+      const svg = svgRef.current;
+      if (origin && svg?.hasPointerCapture(origin.pointerId))
+        svg.releasePointerCapture(origin.pointerId);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isDragging, svgRef]);
 
   return (
     <svg
       ref={svgRef}
-      className={`floor-plan ${draggingGuestId ? 'is-dragging' : ''}`}
+      className={`floor-plan ${drag?.moved ? 'is-dragging' : ''} ${
+        drag?.blocked ? 'is-drop-blocked' : ''
+      }`}
       viewBox="0 0 760 608"
       role="img"
       aria-label="Interactive Orchard House floorplan with guests at four tables"
+      onPointerMove={updateDrag}
       onPointerUp={finishDrag}
-      onPointerCancel={() => {
-        dragStart.current = null;
-        setDraggingGuestId(null);
-      }}
-      onPointerLeave={(event) => {
-        if (dragStart.current && event.buttons === 0) finishDrag(event);
-      }}
+      onPointerCancel={cancelDrag}
     >
       <defs>
+        {/* Doubled stops give hard bands: sprite shading, not an airbrush. */}
         <radialGradient id="tableWood" cx="46%" cy="40%" r="62%">
-          <stop offset="0%" stopColor="#925521" />
-          <stop offset="66%" stopColor="#704016" />
-          <stop offset="100%" stopColor="#3f210d" />
+          <stop offset="0%" stopColor="#9c5c24" />
+          <stop offset="34%" stopColor="#9c5c24" />
+          <stop offset="34%" stopColor="#7f4a1b" />
+          <stop offset="62%" stopColor="#7f4a1b" />
+          <stop offset="62%" stopColor="#65390f" />
+          <stop offset="84%" stopColor="#65390f" />
+          <stop offset="84%" stopColor="#4a280c" />
+          <stop offset="100%" stopColor="#4a280c" />
         </radialGradient>
         <radialGradient id="candleGlow">
-          <stop offset="0%" stopColor="#ffd879" stopOpacity=".72" />
-          <stop offset="44%" stopColor="#e79225" stopOpacity=".22" />
-          <stop offset="100%" stopColor="#e79225" stopOpacity="0" />
+          <stop offset="0%" stopColor="#ffe6a2" stopOpacity=".6" />
+          <stop offset="34%" stopColor="#ffe6a2" stopOpacity=".6" />
+          <stop offset="34%" stopColor="#ffc65a" stopOpacity=".28" />
+          <stop offset="66%" stopColor="#ffc65a" stopOpacity=".28" />
+          <stop offset="66%" stopColor="#e79225" stopOpacity=".1" />
+          <stop offset="100%" stopColor="#e79225" stopOpacity=".1" />
         </radialGradient>
         <linearGradient id="numberDisc" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#dca956" />
-          <stop offset="100%" stopColor="#9a5c24" />
+          <stop offset="0%" stopColor="#e8bb68" />
+          <stop offset="50%" stopColor="#e8bb68" />
+          <stop offset="50%" stopColor="#b3701f" />
+          <stop offset="100%" stopColor="#b3701f" />
         </linearGradient>
         <filter id="tableShadow" x="-30%" y="-30%" width="160%" height="160%">
+          {/* stdDeviation 0: an offset copy, the way a sprite casts shade. */}
           <feDropShadow
             dx="0"
-            dy="5"
-            stdDeviation="4"
-            floodColor="#130803"
-            floodOpacity=".58"
+            dy="6"
+            stdDeviation="0"
+            floodColor="#0d0602"
+            floodOpacity=".6"
           />
         </filter>
       </defs>
@@ -168,14 +387,26 @@ export function FloorPlan({
         const position = TABLE_LAYOUT[tableId];
         const selected = selectedTableId === tableId;
         const invalid = violationTableIds.has(tableId);
+        const dropState =
+          drag?.tableId === tableId
+            ? drag.blocked
+              ? 'is-drop-blocked'
+              : 'is-drop-target'
+            : '';
         return (
           <g
             key={tableId}
-            className={`table-group ${selected ? 'is-selected' : ''} ${invalid ? 'has-violation' : ''}`}
+            className={`table-group ${selected ? 'is-selected' : ''} ${invalid ? 'has-violation' : ''} ${dropState}`}
             role="button"
             tabIndex={0}
             aria-label={`${table.label}, capacity ${table.capacity}`}
-            onClick={() => onSelectTable(tableId)}
+            onClick={() => {
+              if (suppressClick.current) {
+                suppressClick.current = false;
+                return;
+              }
+              onSelectTable(tableId);
+            }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
@@ -243,7 +474,7 @@ export function FloorPlan({
               if (index >= table.capacity) {
                 return (
                   <g key={`closed-${tableId}-${index}`} className="closed-seat">
-                    <circle cx={x} cy={y} r="12" />
+                    <rect x={x - 12} y={y - 12} width="24" height="24" />
                     <path
                       d={`M ${x - 5} ${y - 5} L ${x + 5} ${y + 5} M ${x + 5} ${y - 5} L ${x - 5} ${y + 5}`}
                     />
@@ -273,23 +504,41 @@ export function FloorPlan({
               return (
                 <g
                   key={guestId}
-                  className={`guest ${pinned ? 'is-pinned' : ''} ${selectedGuest ? 'is-selected' : ''} ${guestInvalid ? 'has-violation' : ''} ${draggingGuestId === guestId ? 'is-dragging' : ''}`}
+                  className={`guest ${pinned ? 'is-pinned' : ''} ${selectedGuest ? 'is-selected' : ''} ${guestInvalid ? 'has-violation' : ''} ${drag?.guestId === guestId ? 'is-dragging' : ''} ${drag?.moved && drag.guestId === guestId ? 'is-lifted' : ''}`}
                   role="button"
                   tabIndex={0}
                   aria-label={`${guest.name}, ${table.label}${pinned ? ', pinned' : ''}`}
                   transform={selectedGuest ? `translate(0 -2)` : undefined}
                   onClick={(event) => {
                     event.stopPropagation();
+                    if (suppressClick.current) {
+                      suppressClick.current = false;
+                      return;
+                    }
                     onSelectGuest(guestId);
                   }}
                   onPointerDown={(event) => {
+                    if (event.pointerType === 'mouse' && event.button !== 0)
+                      return;
                     event.stopPropagation();
-                    dragStart.current = {
+                    suppressClick.current = false;
+                    dragOrigin.current = {
                       guestId,
+                      pointerId: event.pointerId,
                       clientX: event.clientX,
                       clientY: event.clientY,
                     };
-                    setDraggingGuestId(guestId);
+                    /* Capturing on the root keeps the drag alive when the
+                     * pointer leaves the guest, the table or the floorplan. */
+                    svgRef.current?.setPointerCapture(event.pointerId);
+                    setDrag({
+                      guestId,
+                      x,
+                      y,
+                      tableId: null,
+                      blocked: false,
+                      moved: false,
+                    });
                   }}
                   onKeyDown={(event) => {
                     event.stopPropagation();
@@ -300,29 +549,41 @@ export function FloorPlan({
                     if (event.key.toLowerCase() === 'p') onTogglePin(guestId);
                   }}
                 >
+                  {/* Transparent hit area: the sprite itself ignores pointer
+                   * events, so without this the character body is not
+                   * hoverable, clickable or draggable. */}
+                  <rect
+                    x={x - 19}
+                    y={y - 34}
+                    width="38"
+                    height="68"
+                    className="guest-hit"
+                  />
                   {selectedGuest && (
-                    <circle cx={x} cy={y} r="27" className="guest-selection" />
-                  )}
-                  {guestInvalid && (
-                    <circle cx={x} cy={y} r="24" className="guest-violation" />
-                  )}
-                  {guest.generated ? (
-                    <g className="generated-avatar">
-                      <circle cx={x} cy={y} r="17" />
-                      <text x={x} y={y + 4} textAnchor="middle">
-                        {initials(guest.name)}
-                      </text>
-                    </g>
-                  ) : (
-                    <image
-                      href={`/cast/${guestId}-front.png`}
-                      x={x - 18}
-                      y={y - 32}
-                      width="36"
-                      height="64"
-                      imageRendering="pixelated"
+                    <rect
+                      x={x - 21}
+                      y={y - 35}
+                      width="42"
+                      height="70"
+                      className="guest-selection"
                     />
                   )}
+                  {guestInvalid && (
+                    <rect
+                      x={x - 25}
+                      y={y - 39}
+                      width="50"
+                      height="78"
+                      className="guest-violation"
+                    />
+                  )}
+                  <GuestSprite
+                    guest={guest}
+                    guestId={guestId}
+                    x={x}
+                    y={y}
+                    facing={facingOf(guestId)}
+                  />
                   <text
                     x={x}
                     y={isLabelAbove ? y - 39 : y + 44}
@@ -336,15 +597,31 @@ export function FloorPlan({
                       transform={`translate(${x + 16} ${y - 29})`}
                       className="guest-pin"
                     >
-                      <circle r="8" className="pin-head" />
-                      <circle cx="-2" cy="-2" r="2.5" className="pin-shine" />
+                      <rect
+                        x="-8"
+                        y="-8"
+                        width="16"
+                        height="16"
+                        className="pin-head"
+                      />
+                      <rect
+                        x="-5"
+                        y="-5"
+                        width="4"
+                        height="4"
+                        className="pin-shine"
+                      />
                     </g>
                   )}
                   {currentSeat?.seatIndex === 4 &&
                     guest.tags.includes('wheelchair') && (
-                      <text x={x - 23} y={y + 3} className="accessible-mark">
-                        ♿
-                      </text>
+                      <g
+                        className="accessible-mark"
+                        transform={`translate(${x - 30} ${y - 6}) scale(1.4)`}
+                      >
+                        <rect x="-1" y="-1" width="11" height="11" />
+                        <path d={ACCESSIBLE_SPRITE} />
+                      </g>
                     )}
                 </g>
               );
@@ -362,6 +639,36 @@ export function FloorPlan({
           </g>
         );
       })}
+
+      {/* The dragged copy rides above every table and never takes the pointer,
+       * so the table under it stays the drop target. */}
+      {drag?.moved && state.guests[drag.guestId] && (
+        <g
+          className={`drag-ghost ${drag.tableId ? 'is-over-table' : ''} ${
+            drag.blocked ? 'is-blocked' : ''
+          }`}
+          transform={`translate(${drag.x} ${drag.y})`}
+          aria-hidden="true"
+        >
+          <ellipse
+            className="drag-ghost-shadow"
+            cx="0"
+            cy="36"
+            rx="17"
+            ry="5"
+          />
+          <GuestSprite
+            guest={state.guests[drag.guestId]}
+            guestId={drag.guestId}
+            x={0}
+            y={0}
+            facing={facingOf(drag.guestId)}
+          />
+          <text className="guest-name" x="0" y="-40" textAnchor="middle">
+            {state.guests[drag.guestId].name}
+          </text>
+        </g>
+      )}
     </svg>
   );
 }

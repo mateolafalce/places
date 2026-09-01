@@ -43,6 +43,10 @@ export interface RoomState {
   guests: Record<string, Guest>;
   tables: Record<TableId, RoomTable>;
   seats: Record<TableId, Array<string | null>>;
+  scenario: {
+    id: string;
+    absentGuest: Guest;
+  };
   pinnedGuestIds: string[];
   selection: Selection;
   timeline: TimelineEvent[];
@@ -66,7 +70,12 @@ export interface ConstraintViolation {
 }
 
 export type RoomCommand =
-  | { type: 'move_guest'; guestId: string; tableId: TableId; seatIndex?: number }
+  | {
+      type: 'move_guest';
+      guestId: string;
+      tableId: TableId;
+      seatIndex?: number;
+    }
   | { type: 'seat_guest_here'; guestId: string; tableId: TableId }
   | { type: 'swap_guests'; guestId: string; otherGuestId: string }
   | { type: 'pin_guest'; guestId: string }
@@ -75,7 +84,7 @@ export type RoomCommand =
   | { type: 'leave_empty_seats'; tableId: TableId; count: number }
   | { type: 'add_guest'; name?: string; tags?: GuestTag[] }
   | { type: 'fix_violations' }
-  | { type: 'reset_seed' };
+  | { type: 'reset_seed'; scenarioSeed?: number };
 
 export interface CommandResult {
   ok: boolean;
@@ -90,28 +99,128 @@ export interface CommandOutcome {
 }
 
 const GUEST_LIST: Guest[] = [
-  { id: 'mabel', name: 'Mabel', note: 'The window or bust.', tags: ['grandparent'] },
-  { id: 'harold', name: 'Harold', note: 'Always sits with Mabel.', tags: ['grandparent'] },
-  { id: 'ivy', name: 'Ivy', note: 'Sits with the host, period.', tags: ['adult'] },
-  { id: 'jules', name: 'Jules', note: 'Keeps the stories moving.', tags: ['adult'] },
-  { id: 'arthur', name: 'Arthur', note: 'Needs an accessible aisle seat.', tags: ['wheelchair'] },
-  { id: 'pearl', name: 'Pearl', note: 'Knows everyone in the room.', tags: ['adult'] },
-  { id: 'rex', name: 'Rex', note: 'Must not share a table with Vivian.', tags: ['adult'] },
-  { id: 'kit', name: 'Kit', note: 'Otis brought Kit as a plus-one.', tags: ['plus_one'] },
-  { id: 'marlo', name: 'Marlo', note: 'Likes a lively table.', tags: ['adult'] },
+  {
+    id: 'mabel',
+    name: 'Mabel',
+    note: 'The window or bust.',
+    tags: ['grandparent'],
+  },
+  {
+    id: 'harold',
+    name: 'Harold',
+    note: 'Always sits with Mabel.',
+    tags: ['grandparent'],
+  },
+  {
+    id: 'ivy',
+    name: 'Ivy',
+    note: 'Sits with the host, period.',
+    tags: ['adult'],
+  },
+  {
+    id: 'jules',
+    name: 'Jules',
+    note: 'Keeps the stories moving.',
+    tags: ['adult'],
+  },
+  {
+    id: 'arthur',
+    name: 'Arthur',
+    note: 'Needs an accessible aisle seat.',
+    tags: ['wheelchair'],
+  },
+  {
+    id: 'pearl',
+    name: 'Pearl',
+    note: 'Knows everyone in the room.',
+    tags: ['adult'],
+  },
+  {
+    id: 'rex',
+    name: 'Rex',
+    note: 'Must not share a table with Vivian.',
+    tags: ['adult'],
+  },
+  {
+    id: 'kit',
+    name: 'Kit',
+    note: 'Otis brought Kit as a plus-one.',
+    tags: ['plus_one'],
+  },
+  {
+    id: 'marlo',
+    name: 'Marlo',
+    note: 'Likes a lively table.',
+    tags: ['adult'],
+  },
   { id: 'otis', name: 'Otis', note: 'Arrived with Kit.', tags: ['adult'] },
-  { id: 'willa', name: 'Willa', note: 'Prefers the quieter side.', tags: ['adult'] },
-  { id: 'vivian', name: 'Vivian', note: 'Must not share a table with Rex.', tags: ['adult'] },
-  { id: 'quinn', name: 'Quinn', note: 'A generous conversationalist.', tags: ['adult'] },
+  {
+    id: 'willa',
+    name: 'Willa',
+    note: 'Prefers the quieter side.',
+    tags: ['adult'],
+  },
+  {
+    id: 'vivian',
+    name: 'Vivian',
+    note: 'Must not share a table with Rex.',
+    tags: ['adult'],
+  },
+  {
+    id: 'quinn',
+    name: 'Quinn',
+    note: 'A generous conversationalist.',
+    tags: ['adult'],
+  },
   { id: 'sable', name: 'Sable', note: 'Happy near the door.', tags: ['adult'] },
-  { id: 'felix', name: 'Felix', note: 'Makes room for late arrivals.', tags: ['adult'] },
-  { id: 'nora', name: 'Nora', note: 'Wants to catch up with Pearl.', tags: ['adult'] },
-  { id: 'pip', name: 'Pip', note: 'One of the kitchen-table kids.', tags: ['kid'] },
-  { id: 'nell', name: 'Nell', note: 'One of the kitchen-table kids.', tags: ['kid'] },
-  { id: 'theo', name: 'Theo', note: 'One of the kitchen-table kids.', tags: ['kid'] },
-  { id: 'birdie', name: 'Birdie', note: 'Keeps an eye on the kids.', tags: ['adult'] },
-  { id: 'cal', name: 'Cal', note: 'Keeps an eye on the kids.', tags: ['adult'] },
-  { id: 'dot', name: 'Dot', note: 'One of the kitchen-table kids.', tags: ['kid'] },
+  {
+    id: 'felix',
+    name: 'Felix',
+    note: 'Makes room for late arrivals.',
+    tags: ['adult'],
+  },
+  {
+    id: 'nora',
+    name: 'Nora',
+    note: 'Wants to catch up with Pearl.',
+    tags: ['adult'],
+  },
+  {
+    id: 'pip',
+    name: 'Pip',
+    note: 'One of the kitchen-table kids.',
+    tags: ['kid'],
+  },
+  {
+    id: 'nell',
+    name: 'Nell',
+    note: 'One of the kitchen-table kids.',
+    tags: ['kid'],
+  },
+  {
+    id: 'theo',
+    name: 'Theo',
+    note: 'One of the kitchen-table kids.',
+    tags: ['kid'],
+  },
+  {
+    id: 'birdie',
+    name: 'Birdie',
+    note: 'Keeps an eye on the kids.',
+    tags: ['adult'],
+  },
+  {
+    id: 'cal',
+    name: 'Cal',
+    note: 'Keeps an eye on the kids.',
+    tags: ['adult'],
+  },
+  {
+    id: 'dot',
+    name: 'Dot',
+    note: 'One of the kitchen-table kids.',
+    tags: ['kid'],
+  },
 ];
 
 const TABLES: Record<TableId, RoomTable> = {
@@ -160,6 +269,40 @@ const INITIAL_SEATS: RoomState['seats'] = {
   'table-4': ['pip', 'nell', 'theo', 'birdie', 'cal', 'dot'],
 };
 
+interface InitialScenario {
+  id: string;
+  absentGuestId: string;
+  swaps: Array<[string, string]>;
+  detail: string;
+}
+
+const INITIAL_SCENARIOS: InitialScenario[] = [
+  {
+    id: 'old-rivals',
+    absentGuestId: 'ivy',
+    swaps: [['rex', 'quinn']],
+    detail: 'Rex and Vivian have ended up together.',
+  },
+  {
+    id: 'split-arrival',
+    absentGuestId: 'jules',
+    swaps: [['kit', 'sable']],
+    detail: 'Kit and Otis were split between tables.',
+  },
+  {
+    id: 'lost-window',
+    absentGuestId: 'pearl',
+    swaps: [['mabel', 'marlo']],
+    detail: 'Mabel lost her place by the window.',
+  },
+  {
+    id: 'kids-table',
+    absentGuestId: 'cal',
+    swaps: [['pip', 'willa']],
+    detail: 'Pip landed away from the kitchen table.',
+  },
+];
+
 function cloneSeats(seats: RoomState['seats']): RoomState['seats'] {
   return Object.fromEntries(
     TABLE_IDS.map((tableId) => [tableId, [...seats[tableId]]]),
@@ -168,29 +311,79 @@ function cloneSeats(seats: RoomState['seats']): RoomState['seats'] {
 
 function cloneTables(tables: RoomState['tables']): RoomState['tables'] {
   return Object.fromEntries(
-    TABLE_IDS.map((tableId) => [tableId, { ...tables[tableId], zones: [...tables[tableId].zones] }]),
+    TABLE_IDS.map((tableId) => [
+      tableId,
+      { ...tables[tableId], zones: [...tables[tableId].zones] },
+    ]),
   ) as RoomState['tables'];
 }
 
-export function createInitialState(): RoomState {
+function swapGuestSeats(
+  seats: RoomState['seats'],
+  firstGuestId: string,
+  secondGuestId: string,
+) {
+  const entries = TABLE_IDS.flatMap((tableId) =>
+    seats[tableId].map((guestId, seatIndex) => ({
+      guestId,
+      seatIndex,
+      tableId,
+    })),
+  );
+  const first = entries.find((entry) => entry.guestId === firstGuestId);
+  const second = entries.find((entry) => entry.guestId === secondGuestId);
+  if (!first || !second) return;
+  seats[first.tableId][first.seatIndex] = secondGuestId;
+  seats[second.tableId][second.seatIndex] = firstGuestId;
+}
+
+export function createInitialState(scenarioSeed = 0): RoomState {
+  const scenarioIndex =
+    Math.abs(Math.trunc(scenarioSeed)) % INITIAL_SCENARIOS.length;
+  const scenario = INITIAL_SCENARIOS[scenarioIndex];
+  const absentGuest = GUEST_LIST.find(
+    (guest) => guest.id === scenario.absentGuestId,
+  )!;
+  const seats = cloneSeats(INITIAL_SEATS);
+  const absentSeat = TABLE_IDS.flatMap((tableId) =>
+    seats[tableId].map((guestId, seatIndex) => ({
+      guestId,
+      seatIndex,
+      tableId,
+    })),
+  ).find((entry) => entry.guestId === absentGuest.id);
+  if (absentSeat) seats[absentSeat.tableId][absentSeat.seatIndex] = null;
+  for (const [firstGuestId, secondGuestId] of scenario.swaps) {
+    swapGuestSeats(seats, firstGuestId, secondGuestId);
+  }
+
   return {
-    guests: Object.fromEntries(GUEST_LIST.map((guest) => [guest.id, { ...guest, tags: [...guest.tags] }])),
+    guests: Object.fromEntries(
+      GUEST_LIST.filter((guest) => guest.id !== absentGuest.id).map((guest) => [
+        guest.id,
+        { ...guest, tags: [...guest.tags] },
+      ]),
+    ),
     tables: cloneTables(TABLES),
-    seats: cloneSeats(INITIAL_SEATS),
+    seats,
+    scenario: {
+      id: scenario.id,
+      absentGuest: { ...absentGuest, tags: [...absentGuest.tags] },
+    },
     pinnedGuestIds: [],
     selection: null,
     timeline: [
       {
         id: 'seed-ready',
         actor: 'system',
-        message: 'Orchard House is ready.',
-        detail: '22 guests · 4 tables · 2 seats held open',
+        message: `${absentGuest.name} cannot make dinner.`,
+        detail: '21 guests · 4 tables · 3 open seats',
       },
       {
         id: 'constraints-ready',
         actor: 'agent',
-        message: 'All constraints are clear.',
-        detail: 'Kids near the kitchen. Mabel by the window.',
+        message: 'The seating plan needs a hand.',
+        detail: scenario.detail,
       },
     ],
     revision: 0,
@@ -244,7 +437,9 @@ export function evaluateConstraints(state: RoomState): ConstraintViolation[] {
       severity: 'hard',
       message: 'Harold must sit with Mabel.',
       guestIds: ['mabel', 'harold'],
-      tableIds: [mabelSeat?.tableId, haroldSeat?.tableId].filter(Boolean) as TableId[],
+      tableIds: [mabelSeat?.tableId, haroldSeat?.tableId].filter(
+        Boolean,
+      ) as TableId[],
     });
   }
 
@@ -255,7 +450,9 @@ export function evaluateConstraints(state: RoomState): ConstraintViolation[] {
       severity: 'hard',
       message: 'Kit must sit with Otis.',
       guestIds: ['kit', 'otis'],
-      tableIds: [kitSeat?.tableId, otisSeat?.tableId].filter(Boolean) as TableId[],
+      tableIds: [kitSeat?.tableId, otisSeat?.tableId].filter(
+        Boolean,
+      ) as TableId[],
     });
   }
 
@@ -322,7 +519,12 @@ function violationScore(state: RoomState): number {
   );
 }
 
-function eventFor(actor: EventActor, message: string, detail: string, revision: number): TimelineEvent {
+function eventFor(
+  actor: EventActor,
+  message: string,
+  detail: string,
+  revision: number,
+): TimelineEvent {
   return {
     id: `${revision}-${actor}-${message}`,
     actor,
@@ -341,11 +543,18 @@ function withEvent(
   return {
     ...state,
     revision,
-    timeline: [eventFor(actor, message, detail, revision), ...state.timeline].slice(0, 30),
+    timeline: [
+      eventFor(actor, message, detail, revision),
+      ...state.timeline,
+    ].slice(0, 30),
   };
 }
 
-function failure(state: RoomState, code: string, message: string): CommandOutcome {
+function failure(
+  state: RoomState,
+  code: string,
+  message: string,
+): CommandOutcome {
   return { state, result: { ok: false, code, message } };
 }
 
@@ -370,10 +579,24 @@ function moveGuest(
   requestedSeatIndex?: number,
 ): CommandOutcome {
   const guest = state.guests[guestId];
-  if (!guest) return failure(state, 'guest_not_found', `Guest "${guestId}" was not found.`);
-  if (!state.tables[tableId]) return failure(state, 'table_not_found', `Table "${tableId}" was not found.`);
+  if (!guest)
+    return failure(
+      state,
+      'guest_not_found',
+      `Guest "${guestId}" was not found.`,
+    );
+  if (!state.tables[tableId])
+    return failure(
+      state,
+      'table_not_found',
+      `Table "${tableId}" was not found.`,
+    );
   if (state.pinnedGuestIds.includes(guestId)) {
-    return failure(state, 'pinned_by_human', `${guest.name} is pinned and cannot be moved.`);
+    return failure(
+      state,
+      'pinned_by_human',
+      `${guest.name} is pinned and cannot be moved.`,
+    );
   }
 
   const currentSeat = getGuestSeat(state, guestId);
@@ -384,13 +607,31 @@ function moveGuest(
   const destination = requestedSeatIndex ?? availableSeat;
 
   if (destination < 0 || destination >= table.capacity) {
-    return failure(state, 'table_full', `${table.label} has no available seats.`);
+    return failure(
+      state,
+      'table_full',
+      `${table.label} has no available seats.`,
+    );
   }
-  if (state.seats[tableId][destination] !== null && state.seats[tableId][destination] !== guestId) {
-    return failure(state, 'seat_occupied', `Seat ${destination + 1} at ${table.label} is occupied.`);
+  if (
+    state.seats[tableId][destination] !== null &&
+    state.seats[tableId][destination] !== guestId
+  ) {
+    return failure(
+      state,
+      'seat_occupied',
+      `Seat ${destination + 1} at ${table.label} is occupied.`,
+    );
   }
-  if (currentSeat?.tableId === tableId && currentSeat.seatIndex === destination) {
-    return success(state, 'already_seated', `${guest.name} is already in that seat.`);
+  if (
+    currentSeat?.tableId === tableId &&
+    currentSeat.seatIndex === destination
+  ) {
+    return success(
+      state,
+      'already_seated',
+      `${guest.name} is already in that seat.`,
+    );
   }
 
   const seats = cloneSeats(state.seats);
@@ -402,11 +643,16 @@ function moveGuest(
     `${actorLabel(actor)} moved ${guest.name}.`,
     `${guest.name} is now at ${table.label}.`,
   );
-  return success(next, 'guest_moved', `${guest.name} moved to ${table.label}.`, {
-    guestId,
-    tableId,
-    seatIndex: destination,
-  });
+  return success(
+    next,
+    'guest_moved',
+    `${guest.name} moved to ${table.label}.`,
+    {
+      guestId,
+      tableId,
+      seatIndex: destination,
+    },
+  );
 }
 
 function swapGuests(
@@ -417,13 +663,30 @@ function swapGuests(
 ): CommandOutcome {
   const guest = state.guests[guestId];
   const other = state.guests[otherGuestId];
-  if (!guest || !other) return failure(state, 'guest_not_found', 'Both guests must exist before a swap.');
-  if (state.pinnedGuestIds.includes(guestId) || state.pinnedGuestIds.includes(otherGuestId)) {
-    return failure(state, 'pinned_by_human', 'Pinned guests cannot be swapped.');
+  if (!guest || !other)
+    return failure(
+      state,
+      'guest_not_found',
+      'Both guests must exist before a swap.',
+    );
+  if (
+    state.pinnedGuestIds.includes(guestId) ||
+    state.pinnedGuestIds.includes(otherGuestId)
+  ) {
+    return failure(
+      state,
+      'pinned_by_human',
+      'Pinned guests cannot be swapped.',
+    );
   }
   const seat = getGuestSeat(state, guestId);
   const otherSeat = getGuestSeat(state, otherGuestId);
-  if (!seat || !otherSeat) return failure(state, 'guest_not_seated', 'Both guests must be seated before a swap.');
+  if (!seat || !otherSeat)
+    return failure(
+      state,
+      'guest_not_seated',
+      'Both guests must be seated before a swap.',
+    );
 
   const seats = cloneSeats(state.seats);
   seats[seat.tableId][seat.seatIndex] = otherGuestId;
@@ -434,17 +697,27 @@ function swapGuests(
     `${actorLabel(actor)} swapped ${guest.name} and ${other.name}.`,
     `${guest.name} is at ${state.tables[otherSeat.tableId].label}; ${other.name} is at ${state.tables[seat.tableId].label}.`,
   );
-  return success(next, 'guests_swapped', `${guest.name} and ${other.name} swapped seats.`);
+  return success(
+    next,
+    'guests_swapped',
+    `${guest.name} and ${other.name} swapped seats.`,
+  );
 }
 
-function repairConstraints(state: RoomState, actor: EventActor): CommandOutcome {
+function repairConstraints(
+  state: RoomState,
+  actor: EventActor,
+): CommandOutcome {
   let candidate = { ...state, seats: cloneSeats(state.seats) };
   let score = violationScore(candidate);
   const pinned = new Set(state.pinnedGuestIds);
 
   for (let iteration = 0; iteration < 64 && score > 0; iteration += 1) {
     const slots = TABLE_IDS.flatMap((tableId) =>
-      Array.from({ length: candidate.tables[tableId].capacity }, (_, seatIndex) => ({ tableId, seatIndex })),
+      Array.from(
+        { length: candidate.tables[tableId].capacity },
+        (_, seatIndex) => ({ tableId, seatIndex }),
+      ),
     );
     let bestState: RoomState | null = null;
     let bestScore = score;
@@ -456,7 +729,8 @@ function repairConstraints(state: RoomState, actor: EventActor): CommandOutcome 
         const aGuest = candidate.seats[a.tableId][a.seatIndex];
         const bGuest = candidate.seats[b.tableId][b.seatIndex];
         if (aGuest === bGuest) continue;
-        if ((aGuest && pinned.has(aGuest)) || (bGuest && pinned.has(bGuest))) continue;
+        if ((aGuest && pinned.has(aGuest)) || (bGuest && pinned.has(bGuest)))
+          continue;
 
         const seats = cloneSeats(candidate.seats);
         seats[a.tableId][a.seatIndex] = bGuest;
@@ -478,13 +752,18 @@ function repairConstraints(state: RoomState, actor: EventActor): CommandOutcome 
   const remaining = evaluateConstraints(candidate);
   const movedCount = TABLE_IDS.reduce(
     (count, tableId) =>
-      count + candidate.seats[tableId].filter((guestId, index) => guestId !== state.seats[tableId][index]).length,
+      count +
+      candidate.seats[tableId].filter(
+        (guestId, index) => guestId !== state.seats[tableId][index],
+      ).length,
     0,
   );
   const next = withEvent(
     candidate,
     actor,
-    remaining.length === 0 ? `${actorLabel(actor)} cleared the room.` : `${actorLabel(actor)} improved the room.`,
+    remaining.length === 0
+      ? `${actorLabel(actor)} cleared the room.`
+      : `${actorLabel(actor)} improved the room.`,
     remaining.length === 0
       ? 'Every rule is satisfied. No pins were moved.'
       : `${remaining.length} ${remaining.length === 1 ? 'rule is' : 'rules are'} still blocked by the current pins.`,
@@ -501,9 +780,14 @@ function repairConstraints(state: RoomState, actor: EventActor): CommandOutcome 
       },
     };
   }
-  return success(next, 'violations_fixed', 'All violations were fixed without moving pinned guests.', {
-    movedSeats: movedCount,
-  });
+  return success(
+    next,
+    'violations_fixed',
+    'All violations were fixed without moving pinned guests.',
+    {
+      movedSeats: movedCount,
+    },
+  );
 }
 
 export function executeCommand(
@@ -512,13 +796,21 @@ export function executeCommand(
   actor: EventActor,
 ): CommandOutcome {
   if (command.type === 'reset_seed') {
-    const reset = createInitialState();
+    const scenarioSeed =
+      command.scenarioSeed ??
+      Math.floor(Math.random() * INITIAL_SCENARIOS.length);
+    const reset = createInitialState(scenarioSeed);
     reset.timeline = [
-      eventFor(actor, `${actorLabel(actor)} reset the seed.`, 'The original Orchard House plan is restored.', 1),
+      eventFor(
+        actor,
+        `${actorLabel(actor)} started a new challenge.`,
+        `${reset.scenario.absentGuest.name} is out and the room needs rebalancing.`,
+        1,
+      ),
       ...reset.timeline,
     ];
     reset.revision = 1;
-    return success(reset, 'seed_reset', 'The original seating plan was restored.');
+    return success(reset, 'seed_reset', 'A new seating challenge is ready.');
   }
 
   if (command.type === 'move_guest' || command.type === 'seat_guest_here') {
@@ -537,37 +829,64 @@ export function executeCommand(
 
   if (command.type === 'pin_guest' || command.type === 'unpin_guest') {
     const guest = state.guests[command.guestId];
-    if (!guest) return failure(state, 'guest_not_found', `Guest "${command.guestId}" was not found.`);
+    if (!guest)
+      return failure(
+        state,
+        'guest_not_found',
+        `Guest "${command.guestId}" was not found.`,
+      );
     const isPinned = state.pinnedGuestIds.includes(command.guestId);
     if (command.type === 'pin_guest' && isPinned) {
-      return success(state, 'already_pinned', `${guest.name} is already pinned.`);
+      return success(
+        state,
+        'already_pinned',
+        `${guest.name} is already pinned.`,
+      );
     }
     if (command.type === 'unpin_guest' && !isPinned) {
       return success(state, 'not_pinned', `${guest.name} is not pinned.`);
     }
-    const pinnedGuestIds = command.type === 'pin_guest'
-      ? [...state.pinnedGuestIds, command.guestId]
-      : state.pinnedGuestIds.filter((id) => id !== command.guestId);
+    const pinnedGuestIds =
+      command.type === 'pin_guest'
+        ? [...state.pinnedGuestIds, command.guestId]
+        : state.pinnedGuestIds.filter((id) => id !== command.guestId);
     const verb = command.type === 'pin_guest' ? 'pinned' : 'unpinned';
     const next = withEvent(
       { ...state, pinnedGuestIds },
       actor,
       `${actorLabel(actor)} ${verb} ${guest.name}.`,
-      command.type === 'pin_guest' ? 'This seat is now protected.' : 'The agent may move this guest again.',
+      command.type === 'pin_guest'
+        ? 'This seat is now protected.'
+        : 'The agent may move this guest again.',
     );
     return success(next, verb, `${guest.name} was ${verb}.`);
   }
 
   if (command.type === 'set_capacity') {
     const table = state.tables[command.tableId];
-    if (!table) return failure(state, 'table_not_found', `Table "${command.tableId}" was not found.`);
+    if (!table)
+      return failure(
+        state,
+        'table_not_found',
+        `Table "${command.tableId}" was not found.`,
+      );
     const capacity = Math.round(command.capacity);
     if (capacity < 2 || capacity > 6) {
-      return failure(state, 'invalid_capacity', 'Table capacity must be between 2 and 6.');
+      return failure(
+        state,
+        'invalid_capacity',
+        'Table capacity must be between 2 and 6.',
+      );
     }
-    const displaced = state.seats[command.tableId].slice(capacity).filter(Boolean);
+    const displaced = state.seats[command.tableId]
+      .slice(capacity)
+      .filter(Boolean);
     if (displaced.length > 0) {
-      return failure(state, 'capacity_in_use', 'Move guests out of the removed seats before reducing capacity.');
+      return failure(
+        state,
+        'capacity_in_use',
+        'Move guests out of the removed seats before reducing capacity.',
+      );
     }
     const tables = cloneTables(state.tables);
     tables[command.tableId].capacity = capacity;
@@ -581,15 +900,28 @@ export function executeCommand(
       `${actorLabel(actor)} set ${table.label} to ${capacity}.`,
       `${capacity} seats are now available at this table.`,
     );
-    return success(next, 'capacity_set', `${table.label} now has ${capacity} seats.`);
+    return success(
+      next,
+      'capacity_set',
+      `${table.label} now has ${capacity} seats.`,
+    );
   }
 
   if (command.type === 'leave_empty_seats') {
     const table = state.tables[command.tableId];
-    if (!table) return failure(state, 'table_not_found', `Table "${command.tableId}" was not found.`);
+    if (!table)
+      return failure(
+        state,
+        'table_not_found',
+        `Table "${command.tableId}" was not found.`,
+      );
     const count = Math.round(command.count);
     if (count < 0 || count > table.capacity) {
-      return failure(state, 'invalid_empty_seat_count', `Empty seats must be between 0 and ${table.capacity}.`);
+      return failure(
+        state,
+        'invalid_empty_seat_count',
+        `Empty seats must be between 0 and ${table.capacity}.`,
+      );
     }
     const tables = cloneTables(state.tables);
     tables[command.tableId].reservedEmptySeats = count;
@@ -597,29 +929,53 @@ export function executeCommand(
       { ...state, tables },
       actor,
       `${actorLabel(actor)} held ${count} ${count === 1 ? 'seat' : 'seats'} at ${table.label}.`,
-      count === 0 ? 'No seats are reserved.' : 'The agent will preserve this space while reflowing.',
+      count === 0
+        ? 'No seats are reserved.'
+        : 'The agent will preserve this space while reflowing.',
     );
-    return success(next, 'empty_seats_reserved', `${count} empty seats are reserved at ${table.label}.`);
+    return success(
+      next,
+      'empty_seats_reserved',
+      `${count} empty seats are reserved at ${table.label}.`,
+    );
   }
 
   if (command.type === 'add_guest') {
     const name = command.name?.trim() || `Late Guest ${state.nextGuestNumber}`;
-    const slug = name
-      .toLowerCase()
-      .normalize('NFKD')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || `late-guest-${state.nextGuestNumber}`;
+    const slug =
+      name
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || `late-guest-${state.nextGuestNumber}`;
     let guestId = slug;
     let suffix = 2;
     while (state.guests[guestId]) guestId = `${slug}-${suffix++}`;
 
-    const destinationTableId = TABLE_IDS.find((tableId) => {
+    const tableHasOpenSeat = (tableId: TableId) => {
       const table = state.tables[tableId];
-      return state.seats[tableId].slice(0, table.capacity).some((occupant) => occupant === null);
-    });
-    if (!destinationTableId) return failure(state, 'room_full', 'There are no open seats for another guest.');
-    const seatIndex = state.seats[destinationTableId].findIndex((occupant) => occupant === null);
-    const tags = command.tags?.filter((tag, index, list) => list.indexOf(tag) === index) ?? ['adult'];
+      return state.seats[tableId]
+        .slice(0, table.capacity)
+        .some((occupant) => occupant === null);
+    };
+    const destinationTableId =
+      TABLE_IDS.find(
+        (tableId) =>
+          state.tables[tableId].reservedEmptySeats > 0 &&
+          tableHasOpenSeat(tableId),
+      ) ?? TABLE_IDS.find(tableHasOpenSeat);
+    if (!destinationTableId)
+      return failure(
+        state,
+        'room_full',
+        'There are no open seats for another guest.',
+      );
+    const seatIndex = state.seats[destinationTableId].findIndex(
+      (occupant) => occupant === null,
+    );
+    const tags = command.tags?.filter(
+      (tag, index, list) => list.indexOf(tag) === index,
+    ) ?? ['adult'];
     const guest: Guest = {
       id: guestId,
       name,
@@ -655,12 +1011,20 @@ export function executeCommand(
 
   if (command.type === 'fix_violations') {
     if (evaluateConstraints(state).length === 0) {
-      return success(state, 'no_violations', 'The room already satisfies every constraint.');
+      return success(
+        state,
+        'no_violations',
+        'The room already satisfies every constraint.',
+      );
     }
     return repairConstraints(state, actor);
   }
 
-  return failure(state, 'unsupported_command', 'This command is not supported.');
+  return failure(
+    state,
+    'unsupported_command',
+    'This command is not supported.',
+  );
 }
 
 export function selectItem(state: RoomState, selection: Selection): RoomState {
@@ -670,6 +1034,7 @@ export function selectItem(state: RoomState, selection: Selection): RoomState {
 export function getRoomSnapshot(state: RoomState) {
   return {
     revision: state.revision,
+    scenario: state.scenario,
     tables: TABLE_IDS.map((tableId) => {
       const table = state.tables[tableId];
       return {
@@ -678,12 +1043,14 @@ export function getRoomSnapshot(state: RoomState) {
         capacity: table.capacity,
         reservedEmptySeats: table.reservedEmptySeats,
         zones: table.zones,
-        seats: state.seats[tableId].slice(0, table.capacity).map((guestId, seatIndex) => ({
-          seatIndex,
-          guest: guestId ? state.guests[guestId] : null,
-          pinned: guestId ? state.pinnedGuestIds.includes(guestId) : false,
-          accessible: isAccessibleSeat(seatIndex),
-        })),
+        seats: state.seats[tableId]
+          .slice(0, table.capacity)
+          .map((guestId, seatIndex) => ({
+            seatIndex,
+            guest: guestId ? state.guests[guestId] : null,
+            pinned: guestId ? state.pinnedGuestIds.includes(guestId) : false,
+            accessible: isAccessibleSeat(seatIndex),
+          })),
       };
     }),
     selection: state.selection,
@@ -704,7 +1071,9 @@ export function explainGuest(state: RoomState, guestId: string) {
         }
       : null,
     pinned: state.pinnedGuestIds.includes(guestId),
-    activeViolations: evaluateConstraints(state).filter((violation) => violation.guestIds.includes(guestId)),
+    activeViolations: evaluateConstraints(state).filter((violation) =>
+      violation.guestIds.includes(guestId),
+    ),
     explanation: guest.note,
   };
 }
