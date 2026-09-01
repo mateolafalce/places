@@ -11,6 +11,7 @@
 [Live demo](https://places.mateolafalce.chatgpt.site) · [WebMCP Challenge](https://openai.com/webmcp-challenge/)
 
 <p>
+  <a href="https://github.com/mateolafalce/places/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/mateolafalce/places/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Built for the OpenAI WebMCP Challenge" src="https://img.shields.io/badge/WebMCP-OpenAI%20Challenge-C9A227.svg?style=flat-square&labelColor=8C2F39">
   <img alt="Runtime: client-side" src="https://img.shields.io/badge/runtime-client--side-F4EFE4.svg?style=flat-square&labelColor=8C2F39">
   <img alt="Backend: none" src="https://img.shields.io/badge/backend-none-F4EFE4.svg?style=flat-square&labelColor=8C2F39">
@@ -116,7 +117,7 @@ Each load picks one of four opening problems (rivals seated together, a split pl
 Node 22.13 or newer. From `web/`:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -126,9 +127,12 @@ Then:
 npm test          # seating rules, pins, reflow
 npm run typecheck
 npm run lint
+npm run format:check
 ```
 
 `npm run build` produces the Cloudflare-compatible worker; `npm start` serves it with Wrangler.
+Pull requests run tests, type checking, linting, and formatting checks in GitHub
+Actions.
 
 Python helpers (cast / floor-plan assets) run through the repo `.venv` only: `.venv/bin/python scripts/orchard_cast.py`.
 

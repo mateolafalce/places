@@ -25,6 +25,7 @@ Run JavaScript commands from `web/`:
 - `npm run typecheck` performs strict TypeScript checking without emitting files.
 - `npm run lint` applies Oxlint correctness and React rules.
 - `npm run format` formats supported files with Oxfmt.
+- `npm run format:check` verifies formatting without modifying files.
 
 For asset regeneration, use `.venv/bin/python scripts/orchard_cast.py` from the
 repository root after installing its dependencies with `.venv/bin/pip`.
@@ -43,8 +44,8 @@ duplicating controls. Keep domain logic pure and separate from rendering.
 Vitest discovers `web/lib/**/*.test.ts` in a Node environment. Name tests after
 observable behavior, colocate them with the module, and cover successful moves,
 constraint failures, pin behavior, and edge cases. Run `npm test`,
-`npm run typecheck`, and `npm run lint` before opening a PR. No numeric coverage
-threshold is currently configured.
+`npm run typecheck`, `npm run lint`, and `npm run format:check` before opening a
+PR. No numeric coverage threshold is currently configured.
 
 ## Commit & Pull Request Guidelines
 

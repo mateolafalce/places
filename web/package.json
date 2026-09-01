@@ -13,7 +13,8 @@
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
