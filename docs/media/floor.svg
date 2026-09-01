@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1240 720" width="1240" height="720" role="img" aria-label="Places floorplan: the Orchard House Saturday. Pixel-art guests seated at four tables. Mabel pinned at the window, kids by the kitchen, Rex away from Vivian, two empty seats.">
+<defs>
+<linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#CDB07A"/><stop offset="55%" stop-color="#B58958"/><stop offset="100%" stop-color="#9E7348"/></linearGradient>
+<filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#2C2416" flood-opacity="0.16"/></filter>
+</defs>
+<rect width="1240" height="720" fill="#D7CBB4"/>
+<rect x="24" y="18" width="1192" height="684" rx="18" fill="#F6F0E4" stroke="#C9B89A" stroke-width="1.25"/>
+<text x="72" y="52" font-family="Georgia, serif" font-size="20" fill="#2C2416">Places</text>
+<rect x="44" y="90" width="828" height="592" rx="12" fill="#F3EBDC" stroke="#D4C6AE"/>
+<text x="382" y="174" text-anchor="middle" font-family="Georgia, serif" font-size="10" letter-spacing="2.8" fill="#8A7B68">WINDOW</text>
+<text x="819" y="376" text-anchor="middle" font-family="Georgia, serif" font-size="10" letter-spacing="1.5" fill="#8A7B68">KITCHEN</text>
+<text x="110" y="666" text-anchor="middle" font-family="Georgia, serif" font-size="10" letter-spacing="1.5" fill="#8A7B68">DOOR</text>
+<g transform="translate(248,300)">
+<circle r="66" fill="none" stroke="#C9A227" stroke-width="3" opacity="0.55"/>
+<circle r="62" fill="url(#wood)" stroke="#8A6A42" stroke-width="2" filter="url(#soft)"/>
+<text y="4" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#5C4630">1</text>
+<image href="cast/mabel-back.png" x="-18" y="-126" width="36" height="64"/>
+<text x="0" y="-130" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Mabel</text>
+<image href="cast/harold-back.png" x="50" y="-89" width="36" height="64"/>
+<text x="68" y="-93" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Harold</text>
+<image href="cast/ivy-front.png" x="50" y="-27" width="36" height="64"/>
+<text x="68" y="41" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Ivy</text>
+<image href="cast/jules-front.png" x="-18" y="10" width="36" height="64"/>
+<text x="0" y="78" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Jules</text>
+<image href="cast/arthur-front.png" x="-86" y="-27" width="36" height="64"/>
+<text x="-68" y="41" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Arthur</text>
+<image href="cast/pearl-back.png" x="-86" y="-89" width="36" height="64"/>
+<text x="-68" y="-93" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Pearl</text>
+</g>
+<g transform="translate(560,300)">
+<circle r="62" fill="url(#wood)" stroke="#8A6A42" stroke-width="2" filter="url(#soft)"/>
+<text y="4" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#5C4630">2</text>
+<image href="cast/rex-back.png" x="-18" y="-126" width="36" height="64"/>
+<text x="0" y="-130" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Rex</text>
+<image href="cast/kit-back.png" x="50" y="-89" width="36" height="64"/>
+<text x="68" y="-93" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Kit</text>
+<image href="cast/marlo-front.png" x="50" y="-27" width="36" height="64"/>
+<text x="68" y="41" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Marlo</text>
+<text x="0" y="72" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#A89880">empty</text>
+<image href="cast/otis-front.png" x="-86" y="-27" width="36" height="64"/>
+<text x="-68" y="41" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Otis</text>
+<image href="cast/willa-back.png" x="-86" y="-89" width="36" height="64"/>
+<text x="-68" y="-93" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Willa</text>
+</g>
+<g transform="translate(248,562)">
+<circle r="62" fill="url(#wood)" stroke="#8A6A42" stroke-width="2" filter="url(#soft)"/>
+<text y="4" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#5C4630">3</text>
+<image href="cast/vivian-back.png" x="-18" y="-126" width="36" height="64"/>
+<text x="0" y="-130" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Vivian</text>
+<image href="cast/quinn-back.png" x="50" y="-89" width="36" height="64"/>
+<text x="68" y="-93" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Quinn</text>
+<image href="cast/sable-front.png" x="50" y="-27" width="36" height="64"/>
+<text x="68" y="41" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Sable</text>
+<text x="0" y="72" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#A89880">empty</text>
+<image href="cast/felix-front.png" x="-86" y="-27" width="36" height="64"/>
+<text x="-68" y="41" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Felix</text>
+<image href="cast/nora-back.png" x="-86" y="-89" width="36" height="64"/>
+<text x="-68" y="-93" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Nora</text>
+</g>
+<g transform="translate(560,562)">
+<circle r="62" fill="url(#wood)" stroke="#8A6A42" stroke-width="2" filter="url(#soft)"/>
+<text y="4" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#5C4630">4</text>
+<image href="cast/pip-back.png" x="-18" y="-126" width="36" height="64"/>
+<text x="0" y="-130" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Pip</text>
+<image href="cast/nell-back.png" x="50" y="-89" width="36" height="64"/>
+<text x="68" y="-93" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Nell</text>
+<image href="cast/theo-front.png" x="50" y="-27" width="36" height="64"/>
+<text x="68" y="41" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Theo</text>
+<image href="cast/birdie-front.png" x="-18" y="10" width="36" height="64"/>
+<text x="0" y="78" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Birdie</text>
+<image href="cast/cal-front.png" x="-86" y="-27" width="36" height="64"/>
+<text x="-68" y="41" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Cal</text>
+<image href="cast/dot-back.png" x="-86" y="-89" width="36" height="64"/>
+<text x="-68" y="-93" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#2C2416">Dot</text>
+</g>
+<rect x="888" y="90" width="308" height="592" rx="12" fill="#FFFEFA" stroke="#E2D6C2"/>
+<text x="1042" y="122" text-anchor="middle" font-family="Georgia, serif" font-size="12" letter-spacing="2" fill="#8C2F39">TIMELINE</text>
+</svg>
