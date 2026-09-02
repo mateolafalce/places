@@ -1,11 +1,17 @@
 import {
+  CONSTRAINT_KINDS,
   evaluateConstraints,
   explainGuest,
   getRoomSnapshot,
+  ROOM_ZONES,
   type CommandResult,
+  type ConstraintInput,
+  type ConstraintKind,
+  type ConstraintSeverity,
   type GuestTag,
   type RoomCommand,
   type RoomState,
+  type RoomZone,
   type TableId,
   TABLE_IDS,
 } from './index';
@@ -57,6 +63,22 @@ function text(value: unknown): string | null {
 
 function integer(value: unknown): number | null {
   return typeof value === 'number' && Number.isInteger(value) ? value : null;
+}
+
+function constraintKind(value: unknown): ConstraintKind | null {
+  return CONSTRAINT_KINDS.includes(value as ConstraintKind)
+    ? (value as ConstraintKind)
+    : null;
+}
+
+function roomZone(value: unknown): RoomZone | undefined {
+  return ROOM_ZONES.includes(value as RoomZone)
+    ? (value as RoomZone)
+    : undefined;
+}
+
+function severity(value: unknown): ConstraintSeverity | undefined {
+  return value === 'hard' || value === 'preference' ? value : undefined;
 }
 
 function tableId(value: unknown): TableId | null {
@@ -151,6 +173,106 @@ export function registerStableTools(bridge: WebMcpBridge): () => void {
             message: `Guest "${guestId}" was not found.`,
           }
         );
+      },
+    },
+    {
+      name: 'list_constraints',
+      title: 'List seating rules',
+      description:
+        'List every seating rule in the room as data: its id, kind, severity and the guests it addresses. Rules are the model the reflow enforces.',
+      inputSchema: EMPTY_SCHEMA,
+      execute: () => ({ constraints: bridge.getState().constraints }),
+    },
+    {
+      name: 'add_constraint',
+      title: 'Add a seating rule',
+      description:
+        'Add a seating rule about guests who are in the room. Hard rules must hold; preferences are weighed against each other.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          kind: {
+            type: 'string',
+            enum: CONSTRAINT_KINDS,
+            description: 'The rule to apply to the listed guests.',
+          },
+          guestIds: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'Guest identifiers from get_room_state. Sharing rules need two.',
+          },
+          zone: {
+            type: 'string',
+            enum: ROOM_ZONES,
+            description: 'Required for prefer_zone.',
+          },
+          severity: { type: 'string', enum: ['hard', 'preference'] },
+          message: {
+            type: 'string',
+            description: 'Optional sentence shown when the rule is broken.',
+          },
+        },
+        required: ['kind', 'guestIds'],
+        additionalProperties: false,
+      },
+      execute: (input) => {
+        const kind = constraintKind(input.kind);
+        if (!kind)
+          return {
+            ok: false,
+            code: 'invalid_constraint_kind',
+            message: `kind must be one of: ${CONSTRAINT_KINDS.join(', ')}.`,
+          };
+        if (!Array.isArray(input.guestIds))
+          return {
+            ok: false,
+            code: 'invalid_constraint_guests',
+            message: 'guestIds must be an array of guest identifiers.',
+          };
+        const constraint: ConstraintInput = {
+          kind,
+          guestIds: input.guestIds.map((guestId) => String(guestId)),
+          zone: roomZone(input.zone),
+          severity: severity(input.severity),
+          message: text(input.message) ?? undefined,
+        };
+        const result = bridge.runCommand(
+          { type: 'add_constraint', constraint },
+          'agent',
+        );
+        return toolResponse(result, bridge.getState());
+      },
+    },
+    {
+      name: 'remove_constraint',
+      title: 'Remove a seating rule',
+      description:
+        'Remove a seating rule by the id reported by list_constraints.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          constraintId: {
+            type: 'string',
+            description: 'A rule identifier from list_constraints.',
+          },
+        },
+        required: ['constraintId'],
+        additionalProperties: false,
+      },
+      execute: (input) => {
+        const constraintId = text(input.constraintId);
+        if (!constraintId)
+          return {
+            ok: false,
+            code: 'invalid_constraint_id',
+            message: 'constraintId is required.',
+          };
+        const result = bridge.runCommand(
+          { type: 'remove_constraint', constraintId },
+          'agent',
+        );
+        return toolResponse(result, bridge.getState());
       },
     },
     {
@@ -386,7 +508,7 @@ export function registerContextTools(bridge: WebMcpBridge): () => void {
       name: 'fix_violations',
       title: 'Fix seating violations',
       description:
-        'Reflow unpinned guests to reduce or clear every active violation. Human pins are absolute and are never moved.',
+        'Reflow unpinned guests to reduce or clear every active violation. Human pins are absolute and are never moved. The result says why the reflow stopped: solved, blocked_by_pins (with the pins at fault), infeasible (with a proof) or no_arrangement_found.',
       inputSchema: EMPTY_SCHEMA,
       execute: () => {
         const result = bridge.runCommand({ type: 'fix_violations' }, 'agent');
