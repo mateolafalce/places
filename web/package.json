@@ -7,9 +7,13 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "assets:check": "node scripts/sync-cast.mjs --check",
+    "assets:sync": "node scripts/sync-cast.mjs",
     "dev": "vinext dev",
+    "prebuild": "npm run assets:check",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
+    "pretest": "npm run assets:check",
     "test": "vitest run --coverage --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "typecheck": "tsc --noEmit",

@@ -1,11 +1,6 @@
-# Local agent and Python environments
+# Local agent environments
 /.agents/
 /.codex/
-/.venv/
-
-# Python caches
-__pycache__/
-*.py[cod]
 
 # OS files
 .DS_Store

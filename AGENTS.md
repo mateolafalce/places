@@ -8,10 +8,7 @@ global styling files are in `web/app/`; feature components belong in
 `web/components/ui/`. Seating rules and WebMCP integration are isolated under
 `web/lib/places/`. Static browser assets are stored in `web/public/`.
 
-Project documentation and source artwork live in `docs/`. The
-`scripts/orchard_cast.py` utility regenerates cast and floor-plan assets. Run
-Python only through the repository `.venv` (create it with
-`python -m venv .venv` if absent).
+Project documentation and source artwork live in `docs/`.
 
 ## Build, Test, and Development Commands
 
@@ -26,9 +23,6 @@ Run JavaScript commands from `web/`:
 - `npm run lint` applies Oxlint correctness and React rules.
 - `npm run format` formats supported files with Oxfmt.
 - `npm run format:check` verifies formatting without modifying files.
-
-For asset regeneration, use `.venv/bin/python scripts/orchard_cast.py` from the
-repository root after installing its dependencies with `.venv/bin/pip`.
 
 ## Coding Style & Naming Conventions
 

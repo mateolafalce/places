@@ -135,8 +135,6 @@ Pull requests run tests, type checking, linting, and formatting checks in GitHub
 Actions. Dependabot checks the npm application weekly and GitHub Actions
 monthly.
 
-Python helpers (cast / floor-plan assets) run through the repo `.venv` only: `.venv/bin/python scripts/orchard_cast.py`.
-
 ## License
 
 [MIT](./LICENSE)
