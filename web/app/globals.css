@@ -896,6 +896,46 @@ img {
   scrollbar-color: #7a4f26 #1d1007;
 }
 
+.timeline-empty {
+  padding: 18px 2px;
+  color: #9f825f;
+  font-size: 13px;
+}
+
+.error-shell {
+  display: grid;
+  place-items: center;
+}
+
+.error-card {
+  width: min(560px, calc(100vw - 40px));
+  padding: 28px;
+  background: #2c180d;
+  --f: #8c2f39;
+  --f-hi: rgba(255, 214, 150, 0.12);
+  --f-lo: rgba(0, 0, 0, 0.4);
+  box-shadow: var(--px-frame), var(--px-drop);
+}
+
+.error-card h1 {
+  margin: 0;
+  color: #f5dfb5;
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.error-card > p:not(.eyebrow) {
+  margin: 18px 0;
+  color: #c2a279;
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+}
+
 .timeline-list::-webkit-scrollbar {
   width: 9px;
 }

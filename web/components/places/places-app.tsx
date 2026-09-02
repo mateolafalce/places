@@ -40,8 +40,12 @@ import {
   evaluateConstraints,
   executeCommand,
   getGuestSeat,
-  getRoomSnapshot,
+  getRoomSessionKey,
+  importRoom,
+  loadInitialRoom,
+  ROOM_SESSION_KEY,
   selectItem,
+  serializeRoom,
   TABLE_IDS,
   type CommandResult,
   type EventActor,
@@ -49,7 +53,7 @@ import {
   type RoomState,
   type Selection,
   type TableId,
-} from '@/lib/places/domain';
+} from '@/lib/places';
 import {
   registerContextTools,
   registerStableTools,
@@ -65,6 +69,13 @@ function appReducer(state: RoomState, action: AppAction): RoomState {
   return selectItem(state, action.selection);
 }
 
+interface RoomHistory {
+  past: RoomState[];
+  future: RoomState[];
+}
+
+const HISTORY_LIMIT = 50;
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -74,6 +85,19 @@ function downloadBlob(blob: Blob, filename: string) {
   /* Some browsers cancel a download whose blob URL is revoked in the same
    * task as the click, so let the click settle first. */
   setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function readFileText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('The selected file is not text.'));
+    };
+    reader.onerror = () =>
+      reject(reader.error ?? new Error('The selected file could not be read.'));
+    reader.readAsText(file);
+  });
 }
 
 const EXPORT_WIDTH = 1200;
@@ -172,31 +196,84 @@ export function PlacesApp() {
   const [guestNameDraft, setGuestNameDraft] = useState('');
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const guestNameInputRef = useRef<HTMLInputElement | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const historyRef = useRef<RoomHistory>({ past: [], future: [] });
+  const sessionKeyRef = useRef(ROOM_SESSION_KEY);
+  const [historyAvailability, setHistoryAvailability] = useState({
+    canUndo: false,
+    canRedo: false,
+  });
+  const [restored, setRestored] = useState(false);
   const violations = useMemo(() => evaluateConstraints(state), [state]);
-  const randomizedInitialState = useRef(false);
+  const initialized = useRef(false);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   useEffect(() => {
-    if (randomizedInitialState.current) return;
-    randomizedInitialState.current = true;
-    const seed = window.crypto.getRandomValues(new Uint32Array(1))[0];
-    const initialState = createInitialState(seed);
+    if (initialized.current) return;
+    initialized.current = true;
+    const fallbackSeed = window.crypto.getRandomValues(new Uint32Array(1))[0];
+    let storedRoom: string | null = null;
+    sessionKeyRef.current = getRoomSessionKey(window.location.search);
+    try {
+      storedRoom = window.sessionStorage.getItem(sessionKeyRef.current);
+    } catch {
+      // Storage can be disabled. The room remains usable for this page view.
+    }
+    const initialState = loadInitialRoom({
+      search: window.location.search,
+      storedRoom,
+      fallbackSeed,
+    });
     stateRef.current = initialState;
     dispatch({ type: 'replace', state: initialState });
+    setRestored(true);
   }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      window.sessionStorage.setItem(
+        sessionKeyRef.current,
+        serializeRoom(state),
+      );
+    } catch {
+      // A private browser may reject storage; commands still work in memory.
+    }
+  }, [restored, state]);
+
+  const replaceState = useCallback(
+    (nextState: RoomState, rememberCurrent: boolean) => {
+      const currentState = stateRef.current;
+      if (nextState === currentState) return;
+      if (rememberCurrent) {
+        historyRef.current = {
+          past: [...historyRef.current.past, currentState].slice(
+            -HISTORY_LIMIT,
+          ),
+          future: [],
+        };
+      }
+      stateRef.current = nextState;
+      dispatch({ type: 'replace', state: nextState });
+      setHistoryAvailability({
+        canUndo: historyRef.current.past.length > 0,
+        canRedo: historyRef.current.future.length > 0,
+      });
+    },
+    [],
+  );
 
   const runCommand = useCallback(
     (command: RoomCommand, actor: EventActor): CommandResult => {
       const outcome = executeCommand(stateRef.current, command, actor);
-      stateRef.current = outcome.state;
-      dispatch({ type: 'replace', state: outcome.state });
+      replaceState(outcome.state, true);
       setNotice(outcome.result);
       return outcome.result;
     },
-    [],
+    [replaceState],
   );
 
   const getCurrentState = useCallback(() => stateRef.current, []);
@@ -232,8 +309,75 @@ export function PlacesApp() {
     const same =
       state.selection?.type === selection?.type &&
       state.selection?.id === selection?.id;
-    dispatch({ type: 'select', selection: same ? null : selection });
+    const nextState = selectItem(stateRef.current, same ? null : selection);
+    stateRef.current = nextState;
+    dispatch({ type: 'replace', state: nextState });
   };
+
+  const undo = useCallback(() => {
+    const previous = historyRef.current.past.at(-1);
+    if (!previous) return;
+    historyRef.current = {
+      past: historyRef.current.past.slice(0, -1),
+      future: [stateRef.current, ...historyRef.current.future].slice(
+        0,
+        HISTORY_LIMIT,
+      ),
+    };
+    stateRef.current = previous;
+    dispatch({ type: 'replace', state: previous });
+    setHistoryAvailability({
+      canUndo: historyRef.current.past.length > 0,
+      canRedo: historyRef.current.future.length > 0,
+    });
+    setNotice({
+      ok: true,
+      code: 'undo',
+      message: 'The last change was undone.',
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    const next = historyRef.current.future[0];
+    if (!next) return;
+    historyRef.current = {
+      past: [...historyRef.current.past, stateRef.current].slice(
+        -HISTORY_LIMIT,
+      ),
+      future: historyRef.current.future.slice(1),
+    };
+    stateRef.current = next;
+    dispatch({ type: 'replace', state: next });
+    setHistoryAvailability({
+      canUndo: historyRef.current.past.length > 0,
+      canRedo: historyRef.current.future.length > 0,
+    });
+    setNotice({ ok: true, code: 'redo', message: 'The change was restored.' });
+  }, []);
+
+  useEffect(() => {
+    const handleHistoryKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+      } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+        event.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', handleHistoryKey);
+    return () => window.removeEventListener('keydown', handleHistoryKey);
+  }, [redo, undo]);
 
   const togglePin = (guestId: string) => {
     const pinned = stateRef.current.pinnedGuestIds.includes(guestId);
@@ -244,7 +388,7 @@ export function PlacesApp() {
   };
 
   const exportJson = () => {
-    const payload = JSON.stringify(getRoomSnapshot(stateRef.current), null, 2);
+    const payload = serializeRoom(stateRef.current);
     downloadBlob(
       new Blob([payload], { type: 'application/json' }),
       'orchard-house-seating.json',
@@ -256,17 +400,53 @@ export function PlacesApp() {
     });
   };
 
+  const importJson = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const imported = importRoom(await readFileText(file));
+      if (!imported.ok) {
+        setNotice({
+          ok: false,
+          code: 'json_import_failed',
+          message: imported.error,
+        });
+        return;
+      }
+      replaceState(imported.state, true);
+      setNotice({
+        ok: true,
+        code: 'json_imported',
+        message: 'The saved room was restored.',
+      });
+    } catch {
+      setNotice({
+        ok: false,
+        code: 'json_import_failed',
+        message: 'The selected file could not be read.',
+      });
+    } finally {
+      if (importInputRef.current) importInputRef.current.value = '';
+    }
+  };
+
   const exportPng = async () => {
     const source = svgRef.current;
-    if (!source) return;
-    /* Height follows the viewBox so a future room shape cannot squash the
-     * export into the wrong aspect ratio. */
-    const view = source.viewBox.baseVal;
-    const height =
-      view.width > 0
-        ? Math.round((view.height / view.width) * EXPORT_WIDTH)
-        : EXPORT_HEIGHT;
+    if (!source) {
+      setNotice({
+        ok: false,
+        code: 'png_export_failed',
+        message: 'The floorplan is not ready to export yet.',
+      });
+      return;
+    }
     try {
+      /* Height follows the viewBox so a future room shape cannot squash the
+       * export into the wrong aspect ratio. */
+      const view = source.viewBox.baseVal;
+      const height =
+        view.width > 0
+          ? Math.round((view.height / view.width) * EXPORT_WIDTH)
+          : EXPORT_HEIGHT;
       const clone = source.cloneNode(true) as SVGSVGElement;
       clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
       clone.setAttribute('width', String(EXPORT_WIDTH));
@@ -341,6 +521,10 @@ export function PlacesApp() {
   const confirmResetSeed = () => {
     setResetDialogOpen(false);
     const scenarioSeed = window.crypto.getRandomValues(new Uint32Array(1))[0];
+    const url = new URL(window.location.href);
+    url.searchParams.set('seed', String(scenarioSeed));
+    window.history.replaceState(null, '', url);
+    sessionKeyRef.current = getRoomSessionKey(url.search);
     runCommand({ type: 'reset_seed', scenarioSeed }, 'human');
   };
 
@@ -390,8 +574,43 @@ export function PlacesApp() {
           <Button variant="outline" size="sm" onClick={exportJson}>
             <PixelIcon name="json" /> JSON
           </Button>
+          <input
+            ref={importInputRef}
+            className="sr-only"
+            type="file"
+            accept="application/json,.json"
+            aria-label="Import room JSON"
+            onChange={(event) => void importJson(event.target.files?.[0])}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => importInputRef.current?.click()}
+          >
+            <PixelIcon name="import" /> Import
+          </Button>
           <Button variant="outline" size="sm" onClick={() => void exportPng()}>
             <PixelIcon name="png" /> PNG
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            disabled={!historyAvailability.canUndo}
+            onClick={undo}
+            aria-label="Undo last change"
+            title="Undo (Ctrl/⌘ Z)"
+          >
+            <PixelIcon name="undo" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            disabled={!historyAvailability.canRedo}
+            onClick={redo}
+            aria-label="Redo change"
+            title="Redo (Ctrl/⌘ Shift Z)"
+          >
+            <PixelIcon name="redo" />
           </Button>
           <Button
             variant="outline"
@@ -518,6 +737,9 @@ export function PlacesApp() {
           )}
 
           <ol className="timeline-list">
+            {state.timeline.length === 0 && (
+              <li className="timeline-empty">No room activity yet.</li>
+            )}
             {state.timeline.slice(0, 8).map((event) => (
               <li
                 key={event.id}
@@ -590,7 +812,7 @@ export function PlacesApp() {
             <AlertDialogTitle>Start a new challenge?</AlertDialogTitle>
             <AlertDialogDescription>
               This deals a different missing guest and a new seating problem.
-              The current room is lost.
+              You can undo the change afterward.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

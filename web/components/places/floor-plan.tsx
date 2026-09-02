@@ -16,7 +16,7 @@ import {
   type ConstraintViolation,
   type RoomState,
   type TableId,
-} from '@/lib/places/domain';
+} from '@/lib/places';
 
 const SEAT_OFFSETS = [
   { x: 0, y: -86, labelPlacement: 'above' },
@@ -31,13 +31,6 @@ const SEAT_OFFSETS = [
  * system font drew smooth and full-colour in the middle of pixel art. */
 const ACCESSIBLE_SPRITE =
   'M3 0h1v1h-1zM4 0h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM2 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM7 6h1v1h-1zM1 7h1v1h-1zM7 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1z';
-
-const TABLE_LAYOUT: Record<TableId, { x: number; y: number }> = {
-  'table-1': { x: 264, y: 191 },
-  'table-2': { x: 490, y: 191 },
-  'table-3': { x: 264, y: 465 },
-  'table-4': { x: 490, y: 465 },
-};
 
 /* Guests glance over their shoulder now and then: one turns their back for a
  * beat, then faces the table again. Each guest keeps their own timer, so the
@@ -235,8 +228,8 @@ export function FloorPlan({
     const nearest = TABLE_IDS.map((tableId) => ({
       tableId,
       distance: Math.hypot(
-        local.x - TABLE_LAYOUT[tableId].x,
-        local.y - TABLE_LAYOUT[tableId].y,
+        local.x - state.tables[tableId].x,
+        local.y - state.tables[tableId].y,
       ),
     })).sort((a, b) => a.distance - b.distance)[0];
     if (!nearest || nearest.distance > DROP_RADIUS) return null;
@@ -384,7 +377,7 @@ export function FloorPlan({
 
       {TABLE_IDS.map((tableId) => {
         const table = state.tables[tableId];
-        const position = TABLE_LAYOUT[tableId];
+        const position = state.tables[tableId];
         const selected = selectedTableId === tableId;
         const invalid = violationTableIds.has(tableId);
         const dropState =
