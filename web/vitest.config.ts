@@ -15,7 +15,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     testTimeout: 10_000,
-    include: ['lib/**/*.test.ts', 'components/**/*.test.tsx'],
+    include: [
+      'lib/**/*.test.ts',
+      'components/**/*.test.tsx',
+      'evals/**/*.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       include: ['lib/places/**/*.ts'],

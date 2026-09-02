@@ -1,0 +1,37 @@
+{
+  "id": "add-hard-separation-rule",
+  "description": "The agent translates a natural-language seating rule into the domain constraint schema.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Nora and Pearl must not sit at the same table. Treat that as a hard rule."
+    }
+  ],
+  "applicationState": {
+    "scenarioSeed": 0,
+    "selection": null,
+    "expectedTools": [
+      "get_room_state",
+      "list_violations",
+      "explain_guest",
+      "list_constraints",
+      "add_constraint",
+      "remove_constraint",
+      "add_guest",
+      "fix_violations"
+    ]
+  },
+  "expectedCall": [
+    {
+      "functionName": "add_constraint",
+      "arguments": {
+        "kind": "must_not_share_table",
+        "guestIds": ["nora", "pearl"],
+        "severity": "hard"
+      },
+      "expectedResult": { "ok": true, "code": "constraint_added" }
+    }
+  ],
+  "forbiddenCalls": ["remove_constraint", "move_guest", "unpin_guest"],
+  "expectedState": { "violationCount": 1 }
+}

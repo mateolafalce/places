@@ -1,0 +1,34 @@
+{
+  "id": "fix-all-violations",
+  "description": "The agent reads the room and uses the reflow tool instead of micromanaging individual seats.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Read the room. Fix every seating violation you can. Do not move anyone I pinned."
+    }
+  ],
+  "applicationState": {
+    "scenarioSeed": 0,
+    "selection": null,
+    "expectedTools": [
+      "get_room_state",
+      "list_violations",
+      "explain_guest",
+      "list_constraints",
+      "add_constraint",
+      "remove_constraint",
+      "add_guest",
+      "fix_violations"
+    ]
+  },
+  "expectedCall": [
+    { "functionName": "get_room_state", "arguments": {} },
+    {
+      "functionName": "fix_violations",
+      "arguments": {},
+      "expectedResult": { "ok": true, "code": "violations_fixed" }
+    }
+  ],
+  "forbiddenCalls": ["move_guest", "swap_guests", "unpin_guest"],
+  "expectedState": { "violationCount": 0, "preserveInitialPins": true }
+}

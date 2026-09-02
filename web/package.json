@@ -15,6 +15,7 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "pretest": "npm run assets:check",
     "test": "vitest run --coverage --config vitest.config.ts",
+    "test:evals": "vitest run --config vitest.config.ts evals/webmcp",
     "test:watch": "vitest --config vitest.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",

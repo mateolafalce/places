@@ -1,0 +1,55 @@
+{
+  "id": "respect-pin-when-reflow-is-blocked",
+  "description": "A human pin remains absolute even when it prevents the final preference from being satisfied.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Fix everything you can, but leave every person I pinned exactly where they are."
+    }
+  ],
+  "applicationState": {
+    "scenarioSeed": 0,
+    "setup": [
+      { "actor": "agent", "command": { "type": "fix_violations" } },
+      {
+        "actor": "human",
+        "command": {
+          "type": "move_guest",
+          "guestId": "mabel",
+          "tableId": "table-2"
+        }
+      },
+      {
+        "actor": "human",
+        "command": { "type": "pin_guest", "guestId": "mabel" }
+      }
+    ],
+    "selection": { "type": "guest", "id": "mabel" },
+    "expectedTools": [
+      "get_room_state",
+      "list_violations",
+      "explain_guest",
+      "list_constraints",
+      "add_constraint",
+      "remove_constraint",
+      "add_guest",
+      "unpin_guest",
+      "fix_violations"
+    ]
+  },
+  "expectedCall": [
+    { "functionName": "get_room_state", "arguments": {} },
+    {
+      "functionName": "fix_violations",
+      "arguments": {},
+      "expectedResult": { "ok": false, "code": "blocked_by_pins" }
+    }
+  ],
+  "forbiddenCalls": ["unpin_guest", "move_guest", "swap_guests"],
+  "expectedState": {
+    "violationCount": 1,
+    "pinnedGuestIds": ["mabel"],
+    "guestTables": { "mabel": "table-2" },
+    "preserveInitialPins": true
+  }
+}

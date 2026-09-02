@@ -1,0 +1,36 @@
+{
+  "id": "pin-selected-guest",
+  "description": "A deictic request resolves through the selected guest context.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Pin her here. This seat is non-negotiable."
+    }
+  ],
+  "applicationState": {
+    "scenarioSeed": 0,
+    "selection": { "type": "guest", "id": "mabel" },
+    "expectedTools": [
+      "get_room_state",
+      "list_violations",
+      "explain_guest",
+      "list_constraints",
+      "add_constraint",
+      "remove_constraint",
+      "add_guest",
+      "pin_guest",
+      "move_guest",
+      "swap_guests",
+      "fix_violations"
+    ]
+  },
+  "expectedCall": [
+    {
+      "functionName": "pin_guest",
+      "arguments": {},
+      "expectedResult": { "ok": true, "code": "pinned" }
+    }
+  ],
+  "forbiddenCalls": ["move_guest", "swap_guests"],
+  "expectedState": { "pinnedGuestIds": ["mabel"] }
+}
