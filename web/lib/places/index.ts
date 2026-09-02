@@ -13,6 +13,16 @@ export {
 } from './constraints';
 export { executeCommand } from './commands';
 export {
+  getRoomSessionKey,
+  importRoom,
+  loadInitialRoom,
+  ROOM_SCHEMA_VERSION,
+  ROOM_SESSION_KEY,
+  serializeRoom,
+  type RoomExport,
+  type RoomImportResult,
+} from './persistence';
+export {
   actorLabel,
   createInitialState,
   scenarioCount,

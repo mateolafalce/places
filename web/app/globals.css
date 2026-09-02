@@ -896,6 +896,12 @@ img {
   scrollbar-color: #7a4f26 #1d1007;
 }
 
+.timeline-empty {
+  padding: 18px 2px;
+  color: #9f825f;
+  font-size: 13px;
+}
+
 .timeline-list::-webkit-scrollbar {
   width: 9px;
 }
