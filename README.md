@@ -136,6 +136,7 @@ Then:
 
 ```bash
 npm test          # domain, WebMCP and UI tests + lib/places coverage gate
+npm run test:evals # replay WebMCP agent-decision fixtures
 npm run typecheck
 npm run lint
 npm run format:check
@@ -145,6 +146,11 @@ npm run format:check
 Pull requests run tests, type checking, linting, and formatting checks in GitHub
 Actions. Dependabot checks the npm application weekly and GitHub Actions
 monthly.
+
+WebMCP eval fixtures live in `web/evals/webmcp/`. CI validates their tool
+catalogs and deterministically replays the reference traces without calling a
+model or requiring an API key. The same fixtures and grader can receive traces
+from repeated model-backed or live-browser trials.
 
 ## License
 

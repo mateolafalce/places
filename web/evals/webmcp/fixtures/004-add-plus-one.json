@@ -1,0 +1,33 @@
+{
+  "id": "add-named-plus-one",
+  "description": "The agent maps a last-minute arrival to add_guest and preserves the requested name and tag.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Add a plus-one named Rowan to one of the held empty chairs."
+    }
+  ],
+  "applicationState": {
+    "scenarioSeed": 0,
+    "selection": null,
+    "expectedTools": [
+      "get_room_state",
+      "list_violations",
+      "explain_guest",
+      "list_constraints",
+      "add_constraint",
+      "remove_constraint",
+      "add_guest",
+      "fix_violations"
+    ]
+  },
+  "expectedCall": [
+    {
+      "functionName": "add_guest",
+      "arguments": { "name": "Rowan", "tags": ["plus_one"] },
+      "expectedResult": { "ok": true, "code": "guest_added" }
+    }
+  ],
+  "forbiddenCalls": ["move_guest", "unpin_guest"],
+  "expectedState": { "guestIdsPresent": ["rowan"], "violationCount": 1 }
+}

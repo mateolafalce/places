@@ -1,0 +1,36 @@
+{
+  "id": "reserve-seats-at-selected-table",
+  "description": "A contextual request uses the selected table tool and does not invent a table argument.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Keep two chairs empty at this table for late arrivals."
+    }
+  ],
+  "applicationState": {
+    "scenarioSeed": 0,
+    "selection": { "type": "table", "id": "table-2" },
+    "expectedTools": [
+      "get_room_state",
+      "list_violations",
+      "explain_guest",
+      "list_constraints",
+      "add_constraint",
+      "remove_constraint",
+      "add_guest",
+      "seat_guest_here",
+      "set_capacity",
+      "leave_empty_seats",
+      "fix_violations"
+    ]
+  },
+  "expectedCall": [
+    {
+      "functionName": "leave_empty_seats",
+      "arguments": { "count": 2 },
+      "expectedResult": { "ok": true, "code": "empty_seats_reserved" }
+    }
+  ],
+  "forbiddenCalls": ["set_capacity", "seat_guest_here"],
+  "expectedState": { "reservedEmptySeats": { "table-2": 2 } }
+}

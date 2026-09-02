@@ -16,7 +16,7 @@ import {
   TABLE_IDS,
 } from './index';
 
-interface ModelContextTool {
+export interface ModelContextTool {
   name: string;
   title?: string;
   description: string;
@@ -122,8 +122,7 @@ async function registerTools(
   }
 }
 
-export function registerStableTools(bridge: WebMcpBridge): () => void {
-  const controller = new AbortController();
+export function createStableTools(bridge: WebMcpBridge): ModelContextTool[] {
   const tools: ModelContextTool[] = [
     {
       name: 'get_room_state',
@@ -319,12 +318,16 @@ export function registerStableTools(bridge: WebMcpBridge): () => void {
     },
   ];
 
-  void registerTools(tools, controller, bridge.setStatus);
+  return tools;
+}
+
+export function registerStableTools(bridge: WebMcpBridge): () => void {
+  const controller = new AbortController();
+  void registerTools(createStableTools(bridge), controller, bridge.setStatus);
   return () => controller.abort();
 }
 
-export function registerContextTools(bridge: WebMcpBridge): () => void {
-  const controller = new AbortController();
+export function createContextTools(bridge: WebMcpBridge): ModelContextTool[] {
   const state = bridge.getState();
   const tools: ModelContextTool[] = [];
 
@@ -517,6 +520,11 @@ export function registerContextTools(bridge: WebMcpBridge): () => void {
     });
   }
 
-  void registerTools(tools, controller, bridge.setStatus);
+  return tools;
+}
+
+export function registerContextTools(bridge: WebMcpBridge): () => void {
+  const controller = new AbortController();
+  void registerTools(createContextTools(bridge), controller, bridge.setStatus);
   return () => controller.abort();
 }

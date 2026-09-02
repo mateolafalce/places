@@ -1,0 +1,27 @@
+{
+  "id": "inspect-clean-room",
+  "description": "Once reflow has solved the room, fix_violations disappears and the agent only reads the empty violation list.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Check whether any seating rules are still broken."
+    }
+  ],
+  "applicationState": {
+    "scenarioSeed": 0,
+    "setup": [{ "actor": "agent", "command": { "type": "fix_violations" } }],
+    "selection": null,
+    "expectedTools": [
+      "get_room_state",
+      "list_violations",
+      "explain_guest",
+      "list_constraints",
+      "add_constraint",
+      "remove_constraint",
+      "add_guest"
+    ]
+  },
+  "expectedCall": [{ "functionName": "list_violations", "arguments": {} }],
+  "forbiddenCalls": ["fix_violations", "move_guest", "unpin_guest"],
+  "expectedState": { "violationCount": 0 }
+}

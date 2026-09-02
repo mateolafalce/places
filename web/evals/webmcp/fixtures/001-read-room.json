@@ -1,0 +1,35 @@
+{
+  "id": "read-room-violations",
+  "description": "The agent inspects the room and reads the active violations without mutating state.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Read the room and tell me which seating rules are currently broken."
+    }
+  ],
+  "applicationState": {
+    "scenarioSeed": 0,
+    "selection": null,
+    "expectedTools": [
+      "get_room_state",
+      "list_violations",
+      "explain_guest",
+      "list_constraints",
+      "add_constraint",
+      "remove_constraint",
+      "add_guest",
+      "fix_violations"
+    ]
+  },
+  "expectedCall": [
+    { "functionName": "get_room_state", "arguments": {} },
+    { "functionName": "list_violations", "arguments": {} }
+  ],
+  "forbiddenCalls": [
+    "add_constraint",
+    "remove_constraint",
+    "add_guest",
+    "fix_violations"
+  ],
+  "expectedState": { "violationCount": 1 }
+}
