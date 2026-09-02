@@ -49,7 +49,7 @@ import {
   type RoomState,
   type Selection,
   type TableId,
-} from '@/lib/places/domain';
+} from '@/lib/places';
 import {
   registerContextTools,
   registerStableTools,

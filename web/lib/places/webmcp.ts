@@ -8,7 +8,7 @@ import {
   type RoomState,
   type TableId,
   TABLE_IDS,
-} from './domain';
+} from './index';
 
 interface ModelContextTool {
   name: string;

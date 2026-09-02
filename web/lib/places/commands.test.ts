@@ -5,7 +5,7 @@ import {
   evaluateConstraints,
   executeCommand,
   getGuestSeat,
-} from './domain';
+} from './index';
 
 describe('Orchard House seating domain', () => {
   it('starts every scenario with one absent guest and an open problem', () => {
@@ -151,5 +151,149 @@ describe('Orchard House seating domain', () => {
       code: 'capacity_in_use',
     });
     expect(outcome.state.tables['table-4'].capacity).toBe(6);
+  });
+
+  it('swaps two unpinned seated guests and rejects invalid swaps', () => {
+    const state = createInitialState(0);
+    const mabelSeat = getGuestSeat(state, 'mabel');
+    const rexSeat = getGuestSeat(state, 'rex');
+    const swapped = executeCommand(
+      state,
+      { type: 'swap_guests', guestId: 'mabel', otherGuestId: 'rex' },
+      'human',
+    );
+
+    expect(swapped.result).toMatchObject({ ok: true, code: 'guests_swapped' });
+    expect(getGuestSeat(swapped.state, 'mabel')).toEqual(rexSeat);
+    expect(getGuestSeat(swapped.state, 'rex')).toEqual(mabelSeat);
+
+    const missing = executeCommand(
+      state,
+      { type: 'swap_guests', guestId: 'mabel', otherGuestId: 'nobody' },
+      'human',
+    );
+    expect(missing.result).toMatchObject({
+      ok: false,
+      code: 'guest_not_found',
+    });
+    expect(missing.state).toBe(state);
+  });
+
+  it('reserves empty seats and validates table ids and counts', () => {
+    const state = createInitialState(0);
+    const held = executeCommand(
+      state,
+      { type: 'leave_empty_seats', tableId: 'table-1', count: 2 },
+      'human',
+    );
+    expect(held.result).toMatchObject({
+      ok: true,
+      code: 'empty_seats_reserved',
+    });
+    expect(held.state.tables['table-1'].reservedEmptySeats).toBe(2);
+
+    const invalidCount = executeCommand(
+      state,
+      { type: 'leave_empty_seats', tableId: 'table-1', count: 7 },
+      'human',
+    );
+    expect(invalidCount.result).toMatchObject({
+      ok: false,
+      code: 'invalid_empty_seat_count',
+    });
+
+    const invalidTable = executeCommand(
+      state,
+      {
+        type: 'leave_empty_seats',
+        tableId: 'table-9' as 'table-1',
+        count: 1,
+      },
+      'human',
+    );
+    expect(invalidTable.result).toMatchObject({
+      ok: false,
+      code: 'table_not_found',
+    });
+  });
+
+  it('reports room_full without mutating the room', () => {
+    const state = createInitialState(0);
+    for (const tableId of Object.keys(state.tables) as Array<
+      keyof typeof state.tables
+    >) {
+      const seated = state.seats[tableId].filter(
+        (guestId): guestId is string => guestId !== null,
+      );
+      state.seats[tableId] = [
+        ...seated,
+        ...Array<string | null>(6 - seated.length).fill(null),
+      ];
+      state.tables[tableId].capacity = seated.length;
+      state.tables[tableId].reservedEmptySeats = 0;
+    }
+    const outcome = executeCommand(
+      state,
+      { type: 'add_guest', name: 'No Chair' },
+      'agent',
+    );
+
+    expect(outcome.result).toMatchObject({ ok: false, code: 'room_full' });
+    expect(outcome.state).toBe(state);
+    expect(outcome.state.guests['no-chair']).toBeUndefined();
+  });
+
+  it('rejects invalid guest, table and seat ids', () => {
+    const state = createInitialState(0);
+    const missingGuest = executeCommand(
+      state,
+      { type: 'move_guest', guestId: 'nobody', tableId: 'table-1' },
+      'agent',
+    );
+    const missingTable = executeCommand(
+      state,
+      {
+        type: 'move_guest',
+        guestId: 'mabel',
+        tableId: 'table-9' as 'table-1',
+      },
+      'agent',
+    );
+    const invalidSeat = executeCommand(
+      state,
+      {
+        type: 'move_guest',
+        guestId: 'mabel',
+        tableId: 'table-2',
+        seatIndex: 99,
+      },
+      'agent',
+    );
+
+    expect(missingGuest.result.code).toBe('guest_not_found');
+    expect(missingTable.result.code).toBe('table_not_found');
+    expect(invalidSeat.result.code).toBe('table_full');
+    expect(missingGuest.state).toBe(state);
+    expect(missingTable.state).toBe(state);
+    expect(invalidSeat.state).toBe(state);
+  });
+
+  it('reset_seed recreates the requested scenario with a fresh history', () => {
+    const changed = executeCommand(
+      createInitialState(0),
+      { type: 'pin_guest', guestId: 'mabel' },
+      'human',
+    ).state;
+    const reset = executeCommand(
+      changed,
+      { type: 'reset_seed', scenarioSeed: 2 },
+      'human',
+    );
+
+    expect(reset.result).toMatchObject({ ok: true, code: 'seed_reset' });
+    expect(reset.state.scenario.id).toBe('lost-window');
+    expect(reset.state.pinnedGuestIds).toEqual([]);
+    expect(reset.state.revision).toBe(1);
+    expect(reset.state.timeline[0].message).toContain('new challenge');
   });
 });
