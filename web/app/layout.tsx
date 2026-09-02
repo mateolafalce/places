@@ -7,8 +7,7 @@ const socialImageUrl = new URL('/og.png', siteUrl).toString();
 export const metadata: Metadata = {
   metadataBase: siteUrl,
   title: 'Places',
-  description:
-    'A shared event floorplan where people pin what matters and an agent reflows everything else.',
+  description: 'Pin what matters. Explore agent-assisted arrangements.',
   alternates: {
     canonical: '/',
   },
@@ -17,7 +16,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'Places',
-    description: 'Pin what matters. The agent reflows the rest.',
+    description: 'Pin what matters. Explore agent-assisted arrangements.',
     type: 'website',
     url: '/',
     images: [
@@ -25,14 +24,14 @@ export const metadata: Metadata = {
         url: socialImageUrl,
         width: 1200,
         height: 630,
-        alt: 'Places — Pin what matters. The agent reflows the rest.',
+        alt: 'Places — Pin what matters. Explore agent-assisted arrangements.',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Places',
-    description: 'Pin what matters. The agent reflows the rest.',
+    description: 'Pin what matters. Explore agent-assisted arrangements.',
     images: [socialImageUrl],
   },
 };
